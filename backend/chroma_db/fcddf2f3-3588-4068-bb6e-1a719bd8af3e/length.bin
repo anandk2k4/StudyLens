@@ -1,0 +1,8 @@
+ graph nodes, which are artifacts from the export process. Fixes two patterns:
+
+    1. Keys: Removes "__export_root_" and "__modules['_export_root']_" prefixes
+       - Normal case: "L__self____export_root_child" -> "L__self__child"
+       - inline_builtin case: Uses numeric ID strings like "140468831433840"
+
+    2. Values: Removes "._export_root" and "._modules['_export_root']" from child names
+ 

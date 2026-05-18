@@ -1,0 +1,81 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+.env/
+ENV/
+env/
+uploads/
+*.mp4
+*.mp3
+# Environment variables
+.env
+.env.*
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Logs
+*.log
+
+# SQLite database
+*.sqlite3
+db.sqlite3
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Pyre
+.pyre/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# macOS
+.DS_Store
+
+# Linux
+*~
+
+# Windows
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+
+# FastAPI / Uvicorn
+*.pid
+
+# Coverage reports
+coverage.xml
+
+# dotenv
+.env.local
+
+# Poetry
+poetry.lock
+
+# Pipenv
+Pipfile.lock
