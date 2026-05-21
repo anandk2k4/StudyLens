@@ -1,14 +1,24 @@
-def clean_transcript(text: str):
+def clean_segments(segments):
 
     unwanted_phrases = [
         "thank you",
         "see you soon",
-        "what did you learn from this story",
+        "i shared my learning",
+        "what did you learn from this story"
     ]
 
-    cleaned_text = text
+    cleaned_segments = []
 
-    for phrase in unwanted_phrases:
-        cleaned_text = cleaned_text.replace(phrase, "")
+    for segment in segments:
 
-    return cleaned_text
+        text = segment["text"].lower()
+
+        if any(
+            phrase in text
+            for phrase in unwanted_phrases
+        ):
+            continue
+
+        cleaned_segments.append(segment)
+
+    return cleaned_segments

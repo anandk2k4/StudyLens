@@ -4,6 +4,9 @@ from app.api.qa import router as qa_router
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from app.api.search import router as search_router
+from app.api.youtube import (
+    router as youtube_router
+)
 
 app = FastAPI(title='StudyLens AI')
 
@@ -18,6 +21,7 @@ app.add_middleware(
 app.include_router(upload_router)
 app.include_router(qa_router)
 app.include_router(search_router)
+app.include_router(youtube_router)
 
 app.mount(
     "/uploads",

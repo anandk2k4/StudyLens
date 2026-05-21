@@ -5,7 +5,7 @@ import os
 from app.services.audio_service import extract_audio
 from app.services.transcription_service import transcribe_audio
 from app.services.summary_service import generate_summary
-from app.services.text_cleaning_service import clean_transcript
+from app.services.text_cleaning_service import clean_segments
 from app.services.embedding_service import store_segments
 from app.services.notes_service import (generate_notes)
 from app.services.quiz_service import (generate_quiz)
@@ -33,15 +33,15 @@ async def upload_video(file: UploadFile = File(...)):
     transcript_data["segments"]
     )
 
-    cleaned_text = clean_transcript(transcript_data["text"])
+    cleaned_segments = clean_segments(transcript_data["segments"])
 
     # Generate summary
-    summary = generate_summary(transcript_data["segments"])
+    summary = generate_summary(cleaned_segments)
 
     # Generate notes
-    notes = generate_notes(transcript_data["segments"])     
+    notes = generate_notes(cleaned_segments)
 
-    quiz= generate_quiz(transcript_data["segments"])
+    quiz= generate_quiz(cleaned_segments)
 
     return {
         "filename": file.filename,
