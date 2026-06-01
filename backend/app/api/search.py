@@ -1,44 +1,15 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+from app.schemas.video import SearchRequest, SearchResponse, Segment
+from app.services.embedding_service import search_segments
 
-from app.services.embedding_service import (
-    search_segments
-)
-
-router = APIRouter(
-    prefix="/search",
-    tags=["Search"]
-)
+router = APIRouter(prefix="/search", tags=["Search"])
 
 
-class SearchRequest(BaseModel):
-    query: str
-
-
-@router.post("/")
-async def semantic_search(
-    data: SearchRequest
-):
-
+@router.post("/", response_model=SearchResponse)
+async def semantic_search(data: SearchRequest):
     results = search_segments(
-        data.query
+        query=data.query,
+        video_id=data.video_id or "",
+        n_results=data.n_results,
     )
-
-    documents = results["documents"][0]
-    metadatas = results["metadatas"][0]
-
-    formatted_results = []
-
-    for doc, metadata in zip(
-        documents,
-        metadatas
-    ):
-
-        formatted_results.append({
-            "text": doc,
-            "start": metadata["start"]
-        })
-
-    return {
-        "results": formatted_results
-    }
+    return SearchResponse(results=[Segment(**r) for r in results])

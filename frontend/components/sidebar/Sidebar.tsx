@@ -1,23 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useStore, useActiveSession } from "@/store/useStore";
-import { Session } from "@/types";
-import { uploadVideo, downloadYouTube } from "@/lib/api";
-import { v4 as uuidv4 } from "uuid";
+import { useRef, useState, useEffect } from "react";
+import { useStore } from "@/lib/store";
+import { useSession } from "@/hooks/useSession";
+import { getSessionsAction } from "@/actions/session.actions";
+import { getCurrentUser } from "@/actions/auth.actions";
+import { UserMenu } from "../auth/UserMenu";
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
+function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString("en-US", {
+    month: "short", day: "numeric",
   });
 }
-
-function formatDuration(sec?: number) {
+function formatDuration(sec?: number | null) {
   if (!sec) return "";
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
+  return `${Math.floor(sec / 60)}:${Math.floor(sec % 60).toString().padStart(2, "0")}`;
+}
+
+// ── Silent token refresh ──────────────────────────────────────────────────────
+async function silentRefresh(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/refresh", {
+      method:      "POST",
+      credentials: "include",
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 export function Sidebar() {
@@ -25,105 +35,102 @@ export function Sidebar() {
     sessions,
     activeSessionId,
     sidebarCollapsed,
-    addSession,
-    updateSession,
-    removeSession,
+    setSessions,
     setActiveSession,
     setSidebarCollapsed,
+    setHydrated,
+    setUser,
   } = useStore();
 
-  const [tab, setTab] = useState<"upload" | "youtube">("upload");
-  const [ytUrl, setYtUrl] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const {
+    handleUpload,
+    handleYouTube,
+    handleDelete,
+    loadSession,
+    uploading,
+    error,
+    setError,
+  } = useSession();
+
+  const [tab,           setTab]           = useState<"upload" | "youtube">("upload");
+  const [ytUrl,         setYtUrl]         = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [authError,     setAuthError]     = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  async function handleFile(file: File) {
-    setError("");
-    const tempId = uuidv4();
-    const placeholder: Session = {
-      id: tempId,
-      title: file.name.replace(/\.[^.]+$/, ""),
-      source: "upload",
-      createdAt: new Date().toISOString(),
-      status: "processing",
-    };
-    addSession(placeholder);
-    setActiveSession(tempId);
-    setLoading(true);
-    try {
-      const data = await uploadVideo(file);
-      updateSession(tempId, {
-        id: data.video_id,
-        title: data.filename || placeholder.title,
-        status: "ready",
-        videoUrl: data.video_url,
-        transcript: data.transcript,
-        segments: data.segments,
-        summary: data.summary,
-        notes: data.notes,
-        quiz: data.quiz,
-        duration: data.segments?.at(-1)?.end,
-      });
-      // Fix activeSessionId to real id
-      useStore.setState((s) => ({
-        sessions: s.sessions.map((sess) =>
-          sess.id === tempId ? { ...sess, id: data.video_id } : sess
-        ),
-        activeSessionId: data.video_id,
-      }));
-    } catch (e: any) {
-      updateSession(tempId, { status: "error" });
-      setError(e?.response?.data?.detail?.message ?? "Upload failed.");
-    } finally {
-      setLoading(false);
+  // ── On mount: refresh token → load user → load sessions ──────────────────
+  useEffect(() => {
+    async function init() {
+      // 1. Try to get current user — if access token valid this works immediately
+      let user = null;
+      try {
+        user = await getCurrentUser();
+      } catch {}
+
+      // 2. If no user (access token expired), try silent refresh
+      if (!user) {
+        const refreshed = await silentRefresh();
+        if (refreshed) {
+          try {
+            user = await getCurrentUser();
+          } catch {}
+        }
+      }
+
+      // 3. If still no user — not logged in
+      if (!user) {
+        setAuthError(true);
+        setHydrated(true);
+        return;
+      }
+
+      setUser({ id: user.id, name: user.name, email: user.email });
+
+      // 4. Load sessions from DB
+      // Filter out any PROCESSING sessions that are stuck
+      // (page was refreshed mid-upload — these will never complete)
+      try {
+        const dbSessions = await getSessionsAction();
+        const cleaned = dbSessions.map((s: any) => ({
+          ...s,
+          // If a session is PROCESSING after a page refresh it means
+          // the upload was interrupted — mark it as ERROR in the UI
+          status:    s.status === "PROCESSING" ? "ERROR" : s.status,
+          createdAt: new Date(s.createdAt),
+          updatedAt: new Date(s.updatedAt),
+        }));
+        setSessions(cleaned);
+      } catch {}
+
+      setHydrated(true);
     }
+
+    init();
+  }, []);
+
+  async function onSessionClick(id: string) {
+    if (id === activeSessionId) return;
+    await loadSession(id);
   }
 
-  async function handleYouTube() {
+  async function onYouTubeSubmit() {
     if (!ytUrl.trim()) return;
-    setError("");
-    const tempId = uuidv4();
-    const placeholder: Session = {
-      id: tempId,
-      title: "Fetching YouTube video…",
-      source: "youtube",
-      createdAt: new Date().toISOString(),
-      status: "processing",
-    };
-    addSession(placeholder);
-    setActiveSession(tempId);
-    setLoading(true);
-    try {
-      const data = await downloadYouTube(ytUrl.trim());
-      updateSession(tempId, {
-        id: data.video_id,
-        title: data.filename,
-        status: "ready",
-        videoUrl: data.video_url,
-        transcript: data.transcript,
-        segments: data.segments,
-        summary: data.summary,
-        notes: data.notes,
-        quiz: data.quiz,
-        duration: data.segments?.at(-1)?.end,
-      });
-      useStore.setState((s) => ({
-        sessions: s.sessions.map((sess) =>
-          sess.id === tempId ? { ...sess, id: data.video_id } : sess
-        ),
-        activeSessionId: data.video_id,
-      }));
-      setYtUrl("");
-    } catch (e: any) {
-      updateSession(tempId, { status: "error" });
-      setError(e?.response?.data?.detail?.message ?? "YouTube download failed.");
-    } finally {
-      setLoading(false);
+    await handleYouTube(ytUrl.trim());
+    setYtUrl("");
+  }
+
+  function onDeleteClick(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    if (deleteConfirm === id) {
+      handleDelete(id);
+      setDeleteConfirm(null);
+    } else {
+      setDeleteConfirm(id);
+      setTimeout(() => setDeleteConfirm(null), 3000);
     }
   }
 
+  // ── Collapsed sidebar ─────────────────────────────────────────────────────
   if (sidebarCollapsed) {
     return (
       <aside className="sidebar sidebar--collapsed">
@@ -131,15 +138,13 @@ export function Sidebar() {
           className="collapse-btn"
           onClick={() => setSidebarCollapsed(false)}
           title="Expand sidebar"
-        >
-          ›
-        </button>
+        >›</button>
         <div className="collapsed-sessions">
           {sessions.map((s) => (
             <button
               key={s.id}
               className={`collapsed-dot ${s.id === activeSessionId ? "active" : ""}`}
-              onClick={() => { setActiveSession(s.id); setSidebarCollapsed(false); }}
+              onClick={() => { onSessionClick(s.id); setSidebarCollapsed(false); }}
               title={s.title}
             />
           ))}
@@ -150,34 +155,25 @@ export function Sidebar() {
 
   return (
     <aside className="sidebar">
-      {/* ── Logo ── */}
+
+      {/* Logo */}
       <div className="sidebar-logo">
         <span className="logo-mark">SL</span>
         <span className="logo-text">StudyLens</span>
-        <button
-          className="collapse-btn"
-          onClick={() => setSidebarCollapsed(true)}
-          title="Collapse sidebar"
-        >
-          ‹
-        </button>
+        <button className="collapse-btn" onClick={() => setSidebarCollapsed(true)}>‹</button>
       </div>
 
-      {/* ── Add session ── */}
+      {/* Add session */}
       <div className="add-session">
         <div className="source-tabs">
           <button
             className={`source-tab ${tab === "upload" ? "active" : ""}`}
             onClick={() => setTab("upload")}
-          >
-            ⬆ Upload
-          </button>
+          >⬆ Upload</button>
           <button
             className={`source-tab ${tab === "youtube" ? "active" : ""}`}
             onClick={() => setTab("youtube")}
-          >
-            ▶ YouTube
-          </button>
+          >▶ YouTube</button>
         </div>
 
         {tab === "upload" ? (
@@ -187,14 +183,14 @@ export function Sidebar() {
               type="file"
               accept="video/*"
               style={{ display: "none" }}
-              onChange={(e) => e.target.files?.[0] && handleFile(e.target.files[0])}
+              onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0])}
             />
             <button
               className="add-btn"
               onClick={() => fileRef.current?.click()}
-              disabled={loading}
+              disabled={uploading}
             >
-              {loading ? "Processing…" : "+ Add Video"}
+              {uploading ? "Processing…" : "+ Add Video"}
             </button>
           </>
         ) : (
@@ -204,106 +200,80 @@ export function Sidebar() {
               placeholder="Paste YouTube URL…"
               value={ytUrl}
               onChange={(e) => setYtUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleYouTube()}
-              disabled={loading}
+              onKeyDown={(e) => e.key === "Enter" && onYouTubeSubmit()}
+              disabled={uploading}
             />
             <button
               className="yt-go"
-              onClick={handleYouTube}
-              disabled={loading || !ytUrl.trim()}
+              onClick={onYouTubeSubmit}
+              disabled={uploading || !ytUrl.trim()}
             >
-              {loading ? "…" : "→"}
+              {uploading ? "…" : "→"}
             </button>
           </div>
         )}
 
-        {error && <p className="sidebar-error">{error}</p>}
+        {/* Error message */}
+        {(error || authError) && (
+          <p className="sidebar-error" onClick={() => { setError(""); setAuthError(false); }}>
+            {authError ? "Session expired. Please log in again." : error} ×
+          </p>
+        )}
       </div>
 
-      {/* ── Sessions list ── */}
+      {/* Sessions label */}
       <div className="sessions-label">
         SESSIONS
         <span className="sessions-count">{sessions.length}</span>
       </div>
 
+      {/* Sessions list */}
       <nav className="sessions-nav">
         {sessions.length === 0 && (
           <p className="sessions-empty">No sessions yet.<br />Add a video above.</p>
         )}
+
         {sessions.map((session) => (
-          <SessionItem
+          <div
             key={session.id}
-            session={session}
-            isActive={session.id === activeSessionId}
-            onSelect={() => setActiveSession(session.id)}
-            onDelete={() => {
-              if (deleteConfirm === session.id) {
-                removeSession(session.id);
-                setDeleteConfirm(null);
-              } else {
-                setDeleteConfirm(session.id);
-                setTimeout(() => setDeleteConfirm(null), 3000);
-              }
-            }}
-            deleteConfirm={deleteConfirm === session.id}
-          />
+            className={`session-item ${
+              session.id === activeSessionId ? "active" : ""
+            } status-${session.status.toLowerCase()}`}
+            onClick={() => onSessionClick(session.id)}
+          >
+            <div className="session-icon">
+              {session.status === "PROCESSING" ? (
+                <span className="spin">⟳</span>
+              ) : session.status === "ERROR" ? "⚠"
+                : session.source === "YOUTUBE" ? "▶" : "🎬"}
+            </div>
+            <div className="session-info">
+              <p className="session-title">{session.title}</p>
+              <p className="session-meta">
+                {formatDate(session.createdAt)}
+                {session.duration ? ` · ${formatDuration(session.duration)}` : ""}
+                {session.status === "PROCESSING" && " · Processing…"}
+                {session.status === "ERROR"      && " · Failed"}
+              </p>
+            </div>
+            <button
+              className={`session-delete ${deleteConfirm === session.id ? "confirm" : ""}`}
+              onClick={(e) => onDeleteClick(e, session.id)}
+              title={deleteConfirm === session.id ? "Click again to confirm" : "Remove session"}
+            >
+              {deleteConfirm === session.id ? "?" : "×"}
+            </button>
+          </div>
         ))}
       </nav>
 
-      {/* ── Footer ── */}
+      {/* Footer with UserMenu */}
       <div className="sidebar-footer">
+        <UserMenu />
         <span className="footer-badge">Beta</span>
         <span className="footer-text">v1.0.0</span>
       </div>
-    </aside>
-  );
-}
 
-function SessionItem({
-  session,
-  isActive,
-  onSelect,
-  onDelete,
-  deleteConfirm,
-}: {
-  session: Session;
-  isActive: boolean;
-  onSelect: () => void;
-  onDelete: () => void;
-  deleteConfirm: boolean;
-}) {
-  return (
-    <div
-      className={`session-item ${isActive ? "active" : ""} status-${session.status}`}
-      onClick={onSelect}
-    >
-      <div className="session-icon">
-        {session.status === "processing" ? (
-          <span className="spin">⟳</span>
-        ) : session.status === "error" ? (
-          "⚠"
-        ) : session.source === "youtube" ? (
-          "▶"
-        ) : (
-          "🎬"
-        )}
-      </div>
-      <div className="session-info">
-        <p className="session-title">{session.title}</p>
-        <p className="session-meta">
-          {formatDate(session.createdAt)}
-          {session.duration ? ` · ${formatDuration(session.duration)}` : ""}
-          {session.status === "processing" ? " · Processing…" : ""}
-          {session.status === "error" ? " · Error" : ""}
-        </p>
-      </div>
-      <button
-        className={`session-delete ${deleteConfirm ? "confirm" : ""}`}
-        onClick={(e) => { e.stopPropagation(); onDelete(); }}
-        title={deleteConfirm ? "Click again to confirm" : "Remove session"}
-      >
-        {deleteConfirm ? "?" : "×"}
-      </button>
-    </div>
+    </aside>
   );
 }

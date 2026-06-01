@@ -30,5 +30,5 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, { src: string }>(
         />
       </div>
     );
-  }
+  },
 );

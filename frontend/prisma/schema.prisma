@@ -1,0 +1,75 @@
+// ── StudyLens AI — Prisma Schema ─────────────────────────────────────────────
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+// ── Sessions ──────────────────────────────────────────────────────────────────
+enum SessionSource {
+  UPLOAD
+  YOUTUBE
+}
+
+enum SessionStatus {
+  PROCESSING
+  READY
+  ERROR
+}
+
+model Session {
+  id         String        @id @default(cuid())
+  userId     String        @map("user_id")
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title      String
+  source     SessionSource
+  status     SessionStatus @default(PROCESSING)
+  videoUrl   String?       @map("video_url")
+  videoId    String?       @map("video_id")
+  duration   Float?
+  thumbnail  String?
+
+  transcript String?  @db.Text
+  summary    String?  @db.Text
+  notes      String?  @db.Text
+  quiz       Json?
+  segments   Json?
+  flashcards Json? 
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("sessions")
+}
+
+// ── Refresh Tokens ────────────────────────────────────────────────────────────
+model RefreshToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}

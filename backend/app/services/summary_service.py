@@ -1,72 +1,29 @@
-import ollama
-
-
-def generate_summary(segments):
-
-    total_segments = len(segments)
-
-    if total_segments < 9:
-
-        important_segments = segments
-
-    else:
-
-        important_segments = (
-
-            segments[:3] +
-
-            segments[
-                total_segments // 2:
-                total_segments // 2 + 3
-            ] +
-
-            segments[-3:]
-        )
-
-    context = "\n".join(
-
-        segment["text"]
-
-        for segment in important_segments
-    )
-
-    prompt = f"""
-Create a clear and grounded summary
-using ONLY the transcript context.
-
-Focus on:
-- beginning
-- important events
-- ending lesson
-
-Use exact character roles
-from the transcript.
-
-Do not switch character actions.
-Do not invent information.
-Do not add opinions or commentary.
-
-Transcript Context:
-{context}
 """
+Summary generation service.
+Uses proportional segment selection and a grounded prompt to reduce hallucination.
+"""
+from app.services.ollama_client import chat
+from app.services.segment_selector import select_for_summary
+from app.core.logging import logger
 
-    response = ollama.chat(
+_PROMPT = """You are an educational assistant producing a study summary.
 
-        model="phi",
+TRANSCRIPT EXCERPT:
+{context}
 
-        messages=[
-            {
-                "role": "user",
-                "content": prompt
-            }
-        ],
+INSTRUCTIONS:
+- Write a clear, factual summary based ONLY on the transcript above.
+- Cover the main topic, key points, and any conclusions reached.
+- Use plain, precise language — no filler phrases or opinions.
+- Do NOT start with greetings or meta-commentary (e.g. "Sure!" or "Here is...").
+- Do NOT invent details not present in the transcript.
+- Length: 3-5 sentences.
 
-        options={
-            "temperature": 0.1,
-            "num_predict": 180
-        }
-    )
+SUMMARY:"""
 
-    return response[
-        "message"
-    ]["content"]
+
+def generate_summary(segments: list) -> str:
+    selected = select_for_summary(segments, target=12)
+    context = "\n".join(s["text"] for s in selected)
+    logger.info("Generating summary")
+    return chat(_PROMPT.format(context=context), num_predict=350, temperature=0.1)

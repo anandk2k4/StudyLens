@@ -1,13 +1,12 @@
+// components/tabs/TranscriptTab.tsx
 "use client";
 
 import { useState } from "react";
-import { Segment } from "@/types";
-import { searchTranscript } from "@/lib/api";
+import { Segment } from "@/lib/store";
+import { searchTranscriptAPI } from "@/lib/api-client";
 
 function fmt(s: number) {
-  const m = Math.floor(s / 60);
-  const sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2, "0")}`;
+  return `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
 }
 
 export function TranscriptTab({
@@ -15,26 +14,29 @@ export function TranscriptTab({
   videoId,
   onSeek,
 }: {
-  segments: Segment[];
-  videoId?: string;
-  onSeek: (t: number) => void;
+  segments: any;   // Prisma JsonValue — cast internally
+  videoId?:  string;
+  onSeek:    (t: number) => void;
 }) {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Segment[] | null>(null);
-  const [searching, setSearching] = useState(false);
+  // Cast from Prisma JsonValue to Segment[]
+  const items = (segments as Segment[]) ?? [];
+
+  const [query,    setQuery]    = useState("");
+  const [results,  setResults]  = useState<Segment[] | null>(null);
+  const [searching,setSearching]= useState(false);
 
   async function handleSearch() {
     if (!query.trim()) { setResults(null); return; }
     setSearching(true);
     try {
-      const data = await searchTranscript(query, videoId);
-      setResults(data.results);
+      const data = await searchTranscriptAPI(query, videoId);
+      setResults(data.results as Segment[]);
     } finally {
       setSearching(false);
     }
   }
 
-  const displayed = results ?? segments;
+  const displayed = results ?? items;
 
   return (
     <div className="tab-content">
