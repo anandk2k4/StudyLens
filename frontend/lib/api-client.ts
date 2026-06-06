@@ -1,58 +1,52 @@
-// ── API client — talks to FastAPI backend ─────────────────────────────────────
-// This runs client-side only. It reads the access token from a non-HttpOnly
-// cookie that is written alongside the HttpOnly refresh token.
+// lib/api-client.ts
+// aiApi no longer sends Bearer token — FastAPI auth removed.
+// Auth is handled entirely by Next.js Server Actions + cookies.
 
 import axios, { AxiosError } from "axios";
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const AI_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
 
-export const apiClient = axios.create({ baseURL: BASE });
-
-// Attach access token to every request
-apiClient.interceptors.request.use((config) => {
-  // Access token is stored in a readable cookie for client-side API calls
-  const token = document.cookie
-    .split("; ")
-    .find((r) => r.startsWith("sl_access_token="))
-    ?.split("=")[1];
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
+// ── Auth API (Next.js routes) ─────────────────────────────────────────────────
+export const authApi = axios.create({
+  baseURL:         "/api/auth",
+  withCredentials: true,
 });
 
-// Silent token refresh on 401
-apiClient.interceptors.response.use(
-  (res) => res,
-  async (error: AxiosError) => {
-    if (error.response?.status === 401) {
-      try {
-        await axios.post("/api/auth/refresh"); // Next.js API route handles it
-        return apiClient.request(error.config!);
-      } catch {
-        window.location.href = "/login";
-      }
-    }
-    return Promise.reject(error);
-  },
-);
+// ── AI API (FastAPI — no auth header needed) ──────────────────────────────────
+export const aiApi = axios.create({
+  baseURL: AI_BASE,
+});
 
-// ── Typed API calls ───────────────────────────────────────────────────────────
+// ── Auth calls ────────────────────────────────────────────────────────────────
 
-export async function uploadVideoAPI(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  const { data } = await apiClient.post("/upload/", form, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return data;
+export async function loginAPI(data: { email: string; password: string }) {
+  const { data: res } = await authApi.post("/login", data);
+  return res;
 }
 
-export async function downloadYouTubeAPI(url: string) {
-  const { data } = await apiClient.post("/youtube/", { url });
-  return data;
+export async function registerAPI(data: {
+  name: string; email: string; password: string;
+}) {
+  const { data: res } = await authApi.post("/register", data);
+  return res;
 }
+
+export async function logoutAPI() {
+  const { data: res } = await authApi.post("/logout");
+  return res;
+}
+
+export async function getMeAPI() {
+  const { data: res } = await authApi.get("/me");
+  return res;
+}
+
+// ── AI calls ──────────────────────────────────────────────────────────────────
+// Note: uploadVideoAPI and downloadYouTubeAPI are no longer used directly —
+// useSession.ts calls aiApi directly to pass session_id + user_id as form fields.
 
 export async function askQuestionAPI(question: string, videoId?: string) {
-  const { data } = await apiClient.post("/qa/", {
+  const { data } = await aiApi.post("/qa/", {
     question,
     video_id: videoId,
   });
@@ -60,19 +54,19 @@ export async function askQuestionAPI(question: string, videoId?: string) {
 }
 
 export async function searchTranscriptAPI(
-  query: string,
+  query:    string,
   videoId?: string,
-  nResults = 8,
+  nResults  = 8,
 ) {
-  const { data } = await apiClient.post("/search/", {
+  const { data } = await aiApi.post("/search/", {
     query,
-    video_id: videoId,
+    video_id:  videoId,
     n_results: nResults,
   });
   return data;
 }
 
 export async function getHealthAPI() {
-  const { data } = await apiClient.get("/health/");
+  const { data } = await aiApi.get("/health/");
   return data;
 }

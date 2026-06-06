@@ -1,103 +1,47 @@
-"""
-YouTube endpoint — POST /youtube/
+# app/api/youtube.py — no auth dependency
 
-Accepts a YouTube URL, downloads the video, then runs it through
-the exact same pipeline as a file upload (transcription → embeddings
-→ parallel AI generation).
-"""
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 
-from app.core.errors import StudyLensError, UploadError
 from app.core.logging import logger
-from app.schemas.video import UploadResponse
-from app.services.youtube_service import download_youtube_video
-from app.services.audio_service import extract_audio
-from app.services.transcription_service import transcribe_audio
-from app.services.embedding_service import store_segments
-from app.services.summary_service import generate_summary
-from app.services.notes_service import generate_notes
-from app.services.quiz_service import generate_quiz
-from app.utils.file_utils import cleanup_files
+from app.workers.pipeline import run_youtube_pipeline
 
 router = APIRouter(prefix="/youtube", tags=["YouTube"])
 
-_executor = ThreadPoolExecutor(max_workers=3)
-
-
-async def _run(fn, *args):
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(_executor, fn, *args)
-
 
 class YouTubeRequest(BaseModel):
-    url: str
+    url:        str
+    session_id: Optional[str] = None
+    user_id:    Optional[str] = None
 
 
-@router.post("/", response_model=UploadResponse)
-async def download_and_analyse(data: YouTubeRequest):
-    audio_path = None
+class YouTubeStarted(BaseModel):
+    session_id: str
+    message:    str = "Processing started."
 
-    try:
-        # ── 1. Download ───────────────────────────────────────────────────────
-        logger.info(f"YouTube request: {data.url}")
-        yt_info = await _run(download_youtube_video, data.url)
 
-        video_path  = yt_info["file_path"]
-        video_id    = yt_info["video_id"]
-        title       = yt_info["title"]
+@router.post("/", response_model=YouTubeStarted)
+async def download_and_process(
+    data:             YouTubeRequest,
+    background_tasks: BackgroundTasks,
+):
+    url = data.url.strip()
+    if not url:
+        raise HTTPException(status_code=400, detail={"message": "URL is required."})
+    if "youtube.com" not in url and "youtu.be" not in url:
+        raise HTTPException(status_code=400, detail={"message": "Only YouTube URLs are supported."})
 
-        # ── 2. Extract audio ──────────────────────────────────────────────────
-        audio_path = await _run(extract_audio, video_path)
+    session_id = data.session_id or ""
+    user_id    = data.user_id    or ""
 
-        # ── 3. Transcribe ─────────────────────────────────────────────────────
-        transcript_data = await _run(transcribe_audio, audio_path)
-        segments = transcript_data["segments"]
+    logger.info(f"YouTube job queued: session={session_id} url={url}")
 
-        if not segments:
-            raise HTTPException(status_code=422, detail={
-                "stage": "transcription",
-                "message": "No speech detected in the video."
-            })
-
-        # ── 4. Store embeddings ───────────────────────────────────────────────
-        await _run(store_segments, segments, video_id)
-
-        # ── 5. Parallel AI generation ─────────────────────────────────────────
-        logger.info("Running parallel AI generation for YouTube video")
-        summary, notes, quiz = await asyncio.gather(
-            _run(generate_summary, segments),
-            _run(generate_notes, segments),
-            _run(generate_quiz, segments),
-        )
-
-    except HTTPException:
-        raise
-    except StudyLensError as exc:
-        raise HTTPException(
-            status_code=exc.status_code,
-            detail={"stage": exc.stage, "message": exc.message}
-        )
-    except Exception as exc:
-        logger.error(f"YouTube pipeline error: {exc}", exc_info=True)
-        raise HTTPException(status_code=500, detail={
-            "stage": "pipeline",
-            "message": str(exc)
-        })
-    finally:
-        if audio_path:
-            cleanup_files(audio_path)
-
-    return UploadResponse(
-        video_id=video_id,
-        filename=title,
-        video_url=f"http://127.0.0.1:8000/{video_path}",
-        transcript=transcript_data["text"],
-        segments=segments,
-        summary=summary,
-        notes=notes,
-        quiz=quiz,
+    background_tasks.add_task(
+        run_youtube_pipeline,
+        session_id=session_id,
+        user_id=user_id,
+        url=url,
     )
+
+    return YouTubeStarted(session_id=session_id)

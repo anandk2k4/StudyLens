@@ -1,6 +1,5 @@
 """
-Central configuration — reads from environment / .env file.
-All other modules import settings from here; nothing is hardcoded anywhere else.
+app/core/config.py — extended for Phase 5 (background worker needs to call Next.js).
 """
 from functools import lru_cache
 from typing import List
@@ -17,13 +16,14 @@ class Settings(BaseSettings):
     # App
     app_env: str = "development"
     secret_key: str = "dev-secret-change-me"
+    port: int = 8000
 
     # Ollama
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1:8b"
     ollama_timeout: int = 120
 
-    # Whisper
+    # Whisper (faster-whisper model name — same values as openai-whisper)
     whisper_model: str = "small"
 
     # Storage
@@ -38,6 +38,16 @@ class Settings(BaseSettings):
 
     # FFmpeg
     ffmpeg_bin_path: str = ""
+
+    # ── Phase 5: inter-service communication ──────────────────────────────────
+    # URL of the Next.js frontend (background worker posts status updates here)
+    nextjs_base_url: str = "http://localhost:3000"
+
+    # Shared secret used by the Python backend to authenticate internal
+    # status-update calls to the Next.js API routes.
+    # Set this to any long random string in your .env — must match
+    # SERVICE_TOKEN in the Next.js environment.
+    service_token: str = "change-me-in-production"
 
     @property
     def allowed_origins_list(self) -> List[str]:

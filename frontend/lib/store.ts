@@ -1,7 +1,9 @@
-// lib/store.ts — add Flashcard type and flashcards to SessionFull
-// Full updated file:
+// lib/store.ts — full updated file
+// Fixes: SessionStatus union expanded to match all Prisma enum values
 
 import { create } from "zustand";
+
+// ── Shared types ──────────────────────────────────────────────────────────────
 
 export interface Segment {
   text:  string;
@@ -15,11 +17,24 @@ export interface QuizItem {
   answer:   string;
 }
 
-// ── NEW ───────────────────────────────────────────────────────────────────────
 export interface Flashcard {
   front: string;
   back:  string;
 }
+
+// ── All possible session statuses (mirrors Prisma enum + status.py) ───────────
+export type SessionStatus =
+  | "PROCESSING"
+  | "DOWNLOADING"
+  | "EXTRACTING_AUDIO"
+  | "TRANSCRIBING"
+  | "GENERATING_EMBEDDINGS"
+  | "GENERATING_SUMMARY"
+  | "GENERATING_NOTES"
+  | "GENERATING_QUIZ"
+  | "GENERATING_FLASHCARDS"
+  | "READY"
+  | "ERROR";
 
 export type ActiveTab =
   | "summary"
@@ -27,35 +42,52 @@ export type ActiveTab =
   | "quiz"
   | "transcript"
   | "chat"
-  | "flashcards";    // ← new tab
+  | "flashcards";
+
+// ── Session shapes ────────────────────────────────────────────────────────────
 
 export interface SessionMeta {
-  id:         string;
-  title:      string;
-  source:     "UPLOAD" | "YOUTUBE";
-  status:     "PROCESSING" | "READY" | "ERROR";
-  videoUrl?:  string | null;
-  videoId?:   string | null;
-  duration?:  number | null;
-  thumbnail?: string | null;
-  createdAt:  Date;
-  updatedAt:  Date;
+  id:            string;
+  title:         string;
+  source:        "UPLOAD" | "YOUTUBE";
+  status:        SessionStatus;
+  videoUrl?:     string | null;
+  videoId?:      string | null;
+  duration?:     number | null;
+  thumbnail?:    string | null;
+  errorMessage?: string | null;
+  createdAt:     Date;
+  updatedAt:     Date;
 }
 
 export interface SessionFull extends SessionMeta {
   transcript?: string | null;
   summary?:    string | null;
   notes?:      string | null;
-  quiz?:       any;
-  segments?:   any;
-  flashcards?: any;    // ← new — Prisma JsonValue → Flashcard[] at point of use
+  quiz?:       any;        // Prisma JsonValue → QuizItem[] at point of use
+  segments?:   any;        // Prisma JsonValue → Segment[] at point of use
+  flashcards?: any;        // Prisma JsonValue → Flashcard[] at point of use
 }
+
+// ── User ──────────────────────────────────────────────────────────────────────
 
 export interface User {
   id:    string;
   name:  string;
   email: string;
 }
+
+// ── Helper — is this a terminal status? ──────────────────────────────────────
+export function isTerminalStatus(status: SessionStatus): boolean {
+  return status === "READY" || status === "ERROR";
+}
+
+// ── Helper — is this an active processing status? ─────────────────────────────
+export function isProcessingStatus(status: SessionStatus): boolean {
+  return !isTerminalStatus(status);
+}
+
+// ── Store ─────────────────────────────────────────────────────────────────────
 
 interface StudyLensStore {
   user:                User | null;
@@ -111,7 +143,11 @@ export const useStore = create<StudyLensStore>((set) => ({
     })),
 
   setActiveSession: (id, full) =>
-    set({ activeSessionId: id, activeSessionFull: full ?? null, activeTab: "summary" }),
+    set({
+      activeSessionId:   id,
+      activeSessionFull: full ?? null,
+      activeTab:         "summary",
+    }),
 
   setActiveTab:        (t) => set({ activeTab: t }),
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),

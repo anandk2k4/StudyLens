@@ -17,7 +17,7 @@ INSTRUCTIONS:
 - Use plain, precise language — no filler phrases or opinions.
 - Do NOT start with greetings or meta-commentary (e.g. "Sure!" or "Here is...").
 - Do NOT invent details not present in the transcript.
-- Length: 3-5 sentences.
+- Length: dynamic.
 
 SUMMARY:"""
 

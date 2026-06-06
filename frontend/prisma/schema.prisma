@@ -29,6 +29,14 @@ enum SessionSource {
 
 enum SessionStatus {
   PROCESSING
+  DOWNLOADING
+  EXTRACTING_AUDIO
+  TRANSCRIBING
+  GENERATING_EMBEDDINGS
+  GENERATING_SUMMARY
+  GENERATING_NOTES
+  GENERATING_QUIZ
+  GENERATING_FLASHCARDS
   READY
   ERROR
 }
@@ -41,6 +49,8 @@ model Session {
   title      String
   source     SessionSource
   status     SessionStatus @default(PROCESSING)
+  errorMessage String?       @map("error_message") 
+
   videoUrl   String?       @map("video_url")
   videoId    String?       @map("video_id")
   duration   Float?
@@ -58,6 +68,7 @@ model Session {
 
   @@index([userId])
   @@index([userId, createdAt(sort: Desc)])
+  @@index([status]) 
   @@map("sessions")
 }
 

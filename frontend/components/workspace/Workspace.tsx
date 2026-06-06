@@ -1,15 +1,16 @@
 "use client";
 
 import { useRef } from "react";
-import { useStore, SessionFull } from "@/lib/store";
+import { useStore, SessionFull, isTerminalStatus } from "@/lib/store";
 import { VideoPlayer, VideoPlayerHandle } from "./VideoPlayer";
 import { EmptyState } from "./EmptyState";
+import { ProcessingIndicator } from "./ProcessingIndicator";   // ← now used
 import { SummaryTab }    from "@/components/tabs/SummaryTab";
 import { NotesTab }      from "@/components/tabs/NotesTab";
 import { QuizTab }       from "@/components/tabs/QuizTab";
 import { TranscriptTab } from "@/components/tabs/TranscriptTab";
 import { ChatTab }       from "@/components/tabs/ChatTab";
-import { FlashcardsTab } from "@/components/tabs/FlashcardsTab";  // ← new
+import { FlashcardsTab } from "@/components/tabs/FlashcardsTab";
 
 const TABS = [
   { id: "summary",    label: "Summary",    icon: "📄" },
@@ -17,7 +18,7 @@ const TABS = [
   { id: "quiz",       label: "Quiz",       icon: "🧠" },
   { id: "transcript", label: "Transcript", icon: "🔍" },
   { id: "chat",       label: "Ask AI",     icon: "💬" },
-  { id: "flashcards", label: "Flashcards", icon: "🃏" },  // ← new
+  { id: "flashcards", label: "Flashcards", icon: "🃏" },
 ] as const;
 
 export function Workspace() {
@@ -31,67 +32,50 @@ export function Workspace() {
 
   const session: SessionFull | null = activeSessionFull;
   const sessionMeta = sessions.find((s) => s.id === activeSessionId) ?? null;
-  const playerRef = useRef<VideoPlayerHandle>(null);
+  const playerRef   = useRef<VideoPlayerHandle>(null);
 
   function seekTo(t: number) { playerRef.current?.seekTo(t); }
 
+  // ── No session selected ───────────────────────────────────────────────────
   if (!activeSessionId) return <EmptyState />;
 
+  // ── Full data not loaded yet — use sessionMeta for status display ─────────
   if (!session) {
-    const status = sessionMeta?.status;
-    if (status === "PROCESSING") {
-      return (
-        <div className="processing-state">
-          <div className="proc-spinner">⟳</div>
-          <h2 className="proc-title">Processing Video</h2>
-          <p className="proc-sub">
-            Transcribing · Generating summary, notes, quiz &amp; flashcards…
-          </p>
-          <div className="proc-bar"><div className="proc-fill" /></div>
-        </div>
-      );
-    }
+    const status = sessionMeta?.status ?? "PROCESSING";
+
     if (status === "ERROR") {
       return (
         <div className="error-state">
           <div className="error-icon">⚠</div>
           <h2>Processing Failed</h2>
-          <p>Remove this session and try again.</p>
+          <p>
+            {sessionMeta?.errorMessage ?? "Remove this session and try again."}
+          </p>
         </div>
       );
     }
-    return (
-      <div className="processing-state">
-        <div className="proc-spinner">⟳</div>
-        <h2 className="proc-title">Loading Session</h2>
-        <p className="proc-sub">Fetching saved data…</p>
-      </div>
-    );
+
+    // Still processing — show stage-aware indicator
+    return <ProcessingIndicator status={status} />;
   }
 
-  if (session.status === "PROCESSING") {
-    return (
-      <div className="processing-state">
-        <div className="proc-spinner">⟳</div>
-        <h2 className="proc-title">Processing Video</h2>
-        <p className="proc-sub">
-          Transcribing · Generating summary, notes, quiz &amp; flashcards…
-        </p>
-        <div className="proc-bar"><div className="proc-fill" /></div>
-      </div>
-    );
-  }
-
+  // ── Terminal error state ──────────────────────────────────────────────────
   if (session.status === "ERROR") {
     return (
       <div className="error-state">
         <div className="error-icon">⚠</div>
         <h2>Processing Failed</h2>
-        <p>Remove this session and try again.</p>
+        <p>{session.errorMessage ?? "Remove this session and try again."}</p>
       </div>
     );
   }
 
+  // ── Still processing (full session loaded but not READY yet) ─────────────
+  if (!isTerminalStatus(session.status)) {
+    return <ProcessingIndicator status={session.status} />;
+  }
+
+  // ── READY — render full workspace ─────────────────────────────────────────
   return (
     <div className="workspace">
       <div className="workspace-header">
@@ -121,9 +105,15 @@ export function Workspace() {
       </div>
 
       <div className="tab-panel">
-        {activeTab === "summary"    && session.summary    && <SummaryTab summary={session.summary} />}
-        {activeTab === "notes"      && session.notes      && <NotesTab   notes={session.notes} />}
-        {activeTab === "quiz"       && session.quiz       && <QuizTab    quiz={session.quiz} />}
+        {activeTab === "summary"    && session.summary    && (
+          <SummaryTab summary={session.summary} />
+        )}
+        {activeTab === "notes"      && session.notes      && (
+          <NotesTab notes={session.notes} />
+        )}
+        {activeTab === "quiz"       && session.quiz       && (
+          <QuizTab quiz={session.quiz} />
+        )}
         {activeTab === "transcript" && session.segments   && (
           <TranscriptTab
             segments={session.segments}
