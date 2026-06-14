@@ -1,4 +1,5 @@
-// app/api/sessions/[id]/route.ts — updated to handle errorMessage + all new statuses
+// app/api/sessions/[id]/route.ts
+// Only change: add chapters to the update data block
 
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
@@ -15,29 +16,18 @@ const VALID_STATUSES = [
 
 type SessionStatus = typeof VALID_STATUSES[number];
 
-async function getUserId(
-  req: NextRequest,
-  bodyUserId?: string
-): Promise<string | null> {
-  // 1. Internal call from FastAPI — trust _userId from body (user exists check)
+async function getUserId(req: NextRequest, bodyUserId?: string): Promise<string | null> {
   if (bodyUserId) {
     const exists = await prisma.user.findUnique({
       where: { id: bodyUserId }, select: { id: true },
     });
     if (exists) return bodyUserId;
   }
-
   const cookieStore = await cookies();
-
-  // 2. Access token
   const accessToken = cookieStore.get("sl_access_token")?.value;
   if (accessToken) {
-    try {
-      return verifyAccessToken(accessToken).userId;
-    } catch {}
+    try { return verifyAccessToken(accessToken).userId; } catch {}
   }
-
-  // 3. Refresh token fallback
   const refreshToken = cookieStore.get("sl_refresh_token")?.value;
   if (refreshToken) {
     const stored = await prisma.refreshToken.findUnique({
@@ -45,7 +35,6 @@ async function getUserId(
     });
     if (stored && stored.expiresAt > new Date()) return stored.userId;
   }
-
   return null;
 }
 
@@ -62,30 +51,20 @@ export async function PATCH(
     const body = await req.json();
     const { _userId, errorMessage, ...updateData } = body;
 
-    // Allow internal FastAPI pipeline calls
     const internalKey = req.headers.get("x-internal-key");
     const isInternal  = INTERNAL_KEY && internalKey === INTERNAL_KEY;
-
-    const userId = isInternal
-      ? (_userId ?? null)
-      : await getUserId(req, _userId);
+    const userId      = isInternal ? (_userId ?? null) : await getUserId(req, _userId);
 
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
-
-    // Validate status
     if (updateData.status && !VALID_STATUSES.includes(updateData.status)) {
       return NextResponse.json({ error: "Invalid status." }, { status: 400 });
     }
 
     const session = await prisma.session.findUnique({ where: { id: sessionId } });
-    if (!session) {
-      return NextResponse.json({ error: "Session not found." }, { status: 404 });
-    }
-    if (session.userId !== userId) {
-      return NextResponse.json({ error: "Access denied." }, { status: 403 });
-    }
+    if (!session) return NextResponse.json({ error: "Session not found." }, { status: 404 });
+    if (session.userId !== userId) return NextResponse.json({ error: "Access denied." }, { status: 403 });
 
     const updated = await prisma.session.update({
       where: { id: sessionId },
@@ -102,6 +81,7 @@ export async function PATCH(
         ...(updateData.quiz       !== undefined && { quiz:       updateData.quiz }),
         ...(updateData.segments   !== undefined && { segments:   updateData.segments }),
         ...(updateData.flashcards !== undefined && { flashcards: updateData.flashcards }),
+        ...(updateData.chapters   !== undefined && { chapters:   updateData.chapters }),  // ← NEW
       },
     });
 

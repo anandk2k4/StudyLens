@@ -1,9 +1,6 @@
-// lib/store.ts — full updated file
-// Fixes: SessionStatus union expanded to match all Prisma enum values
+// lib/store.ts — add Chapter type + chapters to SessionFull + "chapters" to ActiveTab
 
 import { create } from "zustand";
-
-// ── Shared types ──────────────────────────────────────────────────────────────
 
 export interface Segment {
   text:  string;
@@ -22,29 +19,22 @@ export interface Flashcard {
   back:  string;
 }
 
-// ── All possible session statuses (mirrors Prisma enum + status.py) ───────────
+// ── NEW ───────────────────────────────────────────────────────────────────────
+export interface Chapter {
+  title:   string;
+  start:   number;
+  end:     number;
+  summary: string;
+}
+
 export type SessionStatus =
-  | "PROCESSING"
-  | "DOWNLOADING"
-  | "EXTRACTING_AUDIO"
-  | "TRANSCRIBING"
-  | "GENERATING_EMBEDDINGS"
-  | "GENERATING_SUMMARY"
-  | "GENERATING_NOTES"
-  | "GENERATING_QUIZ"
-  | "GENERATING_FLASHCARDS"
-  | "READY"
-  | "ERROR";
+  | "PROCESSING" | "DOWNLOADING" | "EXTRACTING_AUDIO" | "TRANSCRIBING"
+  | "GENERATING_EMBEDDINGS" | "GENERATING_SUMMARY" | "GENERATING_NOTES"
+  | "GENERATING_QUIZ" | "GENERATING_FLASHCARDS" | "READY" | "ERROR";
 
 export type ActiveTab =
-  | "summary"
-  | "notes"
-  | "quiz"
-  | "transcript"
-  | "chat"
-  | "flashcards";
-
-// ── Session shapes ────────────────────────────────────────────────────────────
+  | "summary" | "notes" | "quiz" | "transcript"
+  | "chat" | "flashcards" | "chapters";     // ← NEW
 
 export interface SessionMeta {
   id:            string;
@@ -64,12 +54,11 @@ export interface SessionFull extends SessionMeta {
   transcript?: string | null;
   summary?:    string | null;
   notes?:      string | null;
-  quiz?:       any;        // Prisma JsonValue → QuizItem[] at point of use
-  segments?:   any;        // Prisma JsonValue → Segment[] at point of use
-  flashcards?: any;        // Prisma JsonValue → Flashcard[] at point of use
+  quiz?:       any;
+  segments?:   any;
+  flashcards?: any;
+  chapters?:   any;   // ← NEW — Prisma JsonValue → Chapter[] at point of use
 }
-
-// ── User ──────────────────────────────────────────────────────────────────────
 
 export interface User {
   id:    string;
@@ -77,17 +66,13 @@ export interface User {
   email: string;
 }
 
-// ── Helper — is this a terminal status? ──────────────────────────────────────
 export function isTerminalStatus(status: SessionStatus): boolean {
   return status === "READY" || status === "ERROR";
 }
 
-// ── Helper — is this an active processing status? ─────────────────────────────
 export function isProcessingStatus(status: SessionStatus): boolean {
   return !isTerminalStatus(status);
 }
-
-// ── Store ─────────────────────────────────────────────────────────────────────
 
 interface StudyLensStore {
   user:                User | null;
@@ -110,25 +95,17 @@ interface StudyLensStore {
 }
 
 export const useStore = create<StudyLensStore>((set) => ({
-  user:              null,
-  sessions:          [],
-  activeSessionId:   null,
-  activeSessionFull: null,
-  activeTab:         "summary",
-  sidebarCollapsed:  false,
-  hydrated:          false,
+  user: null, sessions: [], activeSessionId: null,
+  activeSessionFull: null, activeTab: "summary",
+  sidebarCollapsed: false, hydrated: false,
 
   setUser:     (user)     => set({ user }),
   setSessions: (sessions) => set({ sessions }),
-
-  addSession: (s) =>
-    set((st) => ({ sessions: [s, ...st.sessions] })),
+  addSession:  (s)        => set((st) => ({ sessions: [s, ...st.sessions] })),
 
   updateSession: (id, patch) =>
     set((st) => ({
-      sessions: st.sessions.map((s) =>
-        s.id === id ? { ...s, ...patch } : s
-      ),
+      sessions: st.sessions.map((s) => s.id === id ? { ...s, ...patch } : s),
       activeSessionFull:
         st.activeSessionId === id
           ? { ...st.activeSessionFull!, ...patch }
@@ -143,11 +120,7 @@ export const useStore = create<StudyLensStore>((set) => ({
     })),
 
   setActiveSession: (id, full) =>
-    set({
-      activeSessionId:   id,
-      activeSessionFull: full ?? null,
-      activeTab:         "summary",
-    }),
+    set({ activeSessionId: id, activeSessionFull: full ?? null, activeTab: "summary" }),
 
   setActiveTab:        (t) => set({ activeTab: t }),
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),

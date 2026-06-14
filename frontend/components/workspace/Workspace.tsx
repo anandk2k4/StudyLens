@@ -1,16 +1,17 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useStore, SessionFull, isTerminalStatus } from "@/lib/store";
 import { VideoPlayer, VideoPlayerHandle } from "./VideoPlayer";
 import { EmptyState } from "./EmptyState";
-import { ProcessingIndicator } from "./ProcessingIndicator";   // ← now used
+import { ProcessingIndicator } from "./ProcessingIndicator";
 import { SummaryTab }    from "@/components/tabs/SummaryTab";
 import { NotesTab }      from "@/components/tabs/NotesTab";
 import { QuizTab }       from "@/components/tabs/QuizTab";
 import { TranscriptTab } from "@/components/tabs/TranscriptTab";
 import { ChatTab }       from "@/components/tabs/ChatTab";
 import { FlashcardsTab } from "@/components/tabs/FlashcardsTab";
+import { ChaptersTab }   from "@/components/tabs/ChaptersTab";   // ← NEW
 
 const TABS = [
   { id: "summary",    label: "Summary",    icon: "📄" },
@@ -19,47 +20,38 @@ const TABS = [
   { id: "transcript", label: "Transcript", icon: "🔍" },
   { id: "chat",       label: "Ask AI",     icon: "💬" },
   { id: "flashcards", label: "Flashcards", icon: "🃏" },
+  { id: "chapters",   label: "Chapters",   icon: "📖" },   // ← NEW
 ] as const;
 
 export function Workspace() {
   const {
-    activeTab,
-    setActiveTab,
-    activeSessionFull,
-    activeSessionId,
-    sessions,
+    activeTab, setActiveTab,
+    activeSessionFull, activeSessionId, sessions,
   } = useStore();
 
   const session: SessionFull | null = activeSessionFull;
   const sessionMeta = sessions.find((s) => s.id === activeSessionId) ?? null;
   const playerRef   = useRef<VideoPlayerHandle>(null);
+  const [currentTime, setCurrentTime] = useState(0);  // ← NEW — track playback
 
   function seekTo(t: number) { playerRef.current?.seekTo(t); }
 
-  // ── No session selected ───────────────────────────────────────────────────
   if (!activeSessionId) return <EmptyState />;
 
-  // ── Full data not loaded yet — use sessionMeta for status display ─────────
   if (!session) {
     const status = sessionMeta?.status ?? "PROCESSING";
-
     if (status === "ERROR") {
       return (
         <div className="error-state">
           <div className="error-icon">⚠</div>
           <h2>Processing Failed</h2>
-          <p>
-            {sessionMeta?.errorMessage ?? "Remove this session and try again."}
-          </p>
+          <p>{sessionMeta?.errorMessage ?? "Remove this session and try again."}</p>
         </div>
       );
     }
-
-    // Still processing — show stage-aware indicator
     return <ProcessingIndicator status={status} />;
   }
 
-  // ── Terminal error state ──────────────────────────────────────────────────
   if (session.status === "ERROR") {
     return (
       <div className="error-state">
@@ -70,12 +62,10 @@ export function Workspace() {
     );
   }
 
-  // ── Still processing (full session loaded but not READY yet) ─────────────
   if (!isTerminalStatus(session.status)) {
     return <ProcessingIndicator status={session.status} />;
   }
 
-  // ── READY — render full workspace ─────────────────────────────────────────
   return (
     <div className="workspace">
       <div className="workspace-header">
@@ -88,7 +78,11 @@ export function Workspace() {
       </div>
 
       {session.videoUrl && (
-        <VideoPlayer ref={playerRef} src={session.videoUrl} />
+        <VideoPlayer
+          ref={playerRef}
+          src={session.videoUrl}
+          onTimeUpdate={setCurrentTime}   // ← NEW — pass time to ChaptersTab
+        />
       )}
 
       <div className="tab-bar">
@@ -105,27 +99,22 @@ export function Workspace() {
       </div>
 
       <div className="tab-panel">
-        {activeTab === "summary"    && session.summary    && (
-          <SummaryTab summary={session.summary} />
-        )}
-        {activeTab === "notes"      && session.notes      && (
-          <NotesTab notes={session.notes} />
-        )}
-        {activeTab === "quiz"       && session.quiz       && (
-          <QuizTab quiz={session.quiz} />
-        )}
+        {activeTab === "summary"    && session.summary    && <SummaryTab summary={session.summary} />}
+        {activeTab === "notes"      && session.notes      && <NotesTab notes={session.notes} />}
+        {activeTab === "quiz"       && session.quiz       && <QuizTab quiz={session.quiz} />}
         {activeTab === "transcript" && session.segments   && (
-          <TranscriptTab
-            segments={session.segments}
-            videoId={session.videoId ?? session.id}
-            onSeek={seekTo}
-          />
+          <TranscriptTab segments={session.segments} videoId={session.videoId ?? session.id} onSeek={seekTo} />
         )}
         {activeTab === "chat" && (
           <ChatTab videoId={session.videoId ?? session.id} onSeek={seekTo} />
         )}
-        {activeTab === "flashcards" && (
-          <FlashcardsTab flashcards={session.flashcards} />
+        {activeTab === "flashcards" && <FlashcardsTab flashcards={session.flashcards} />}
+        {activeTab === "chapters"   && (              // ← NEW
+          <ChaptersTab
+            chapters={session.chapters}
+            currentTime={currentTime}
+            onSeek={seekTo}
+          />
         )}
       </div>
     </div>

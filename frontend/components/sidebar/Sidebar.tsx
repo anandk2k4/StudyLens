@@ -21,7 +21,7 @@ function formatDuration(sec?: number | null) {
 async function silentRefresh(): Promise<boolean> {
   try {
     const res = await fetch("/api/auth/refresh", {
-      method:      "POST",
+      method: "POST",
       credentials: "include",
     });
     return res.ok;
@@ -52,10 +52,10 @@ export function Sidebar() {
     setError,
   } = useSession();
 
-  const [tab,           setTab]           = useState<"upload" | "youtube">("upload");
-  const [ytUrl,         setYtUrl]         = useState("");
+  const [tab, setTab] = useState<"upload" | "youtube">("upload");
+  const [ytUrl, setYtUrl] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [authError,     setAuthError]     = useState(false);
+  const [authError, setAuthError] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   // ── On mount: refresh token → load user → load sessions ──────────────────
@@ -65,7 +65,7 @@ export function Sidebar() {
       let user = null;
       try {
         user = await getCurrentUser();
-      } catch {}
+      } catch { }
 
       // 2. If no user (access token expired), try silent refresh
       if (!user) {
@@ -73,7 +73,7 @@ export function Sidebar() {
         if (refreshed) {
           try {
             user = await getCurrentUser();
-          } catch {}
+          } catch { }
         }
       }
 
@@ -95,12 +95,12 @@ export function Sidebar() {
           ...s,
           // If a session is PROCESSING after a page refresh it means
           // the upload was interrupted — mark it as ERROR in the UI
-          status:    s.status === "PROCESSING" ? "ERROR" : s.status,
+          status: s.status === "PROCESSING" ? "ERROR" : s.status,
           createdAt: new Date(s.createdAt),
           updatedAt: new Date(s.updatedAt),
         }));
         setSessions(cleaned);
-      } catch {}
+      } catch { }
 
       setHydrated(true);
     }
@@ -236,9 +236,8 @@ export function Sidebar() {
         {sessions.map((session) => (
           <div
             key={session.id}
-            className={`session-item ${
-              session.id === activeSessionId ? "active" : ""
-            } status-${session.status.toLowerCase()}`}
+            className={`session-item ${session.id === activeSessionId ? "active" : ""
+              } status-${session.status.toLowerCase()}`}
             onClick={() => onSessionClick(session.id)}
           >
             <div className="session-icon">
@@ -252,8 +251,11 @@ export function Sidebar() {
               <p className="session-meta">
                 {formatDate(session.createdAt)}
                 {session.duration ? ` · ${formatDuration(session.duration)}` : ""}
+                {session.status === "READY" && (session as any).chapterCount
+                  ? ` · ${(session as any).chapterCount} chapters`
+                  : ""}
                 {session.status === "PROCESSING" && " · Processing…"}
-                {session.status === "ERROR"      && " · Failed"}
+                {session.status === "ERROR" && " · Failed"}
               </p>
             </div>
             <button

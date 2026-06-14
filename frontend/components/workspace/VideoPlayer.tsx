@@ -1,4 +1,6 @@
 "use client";
+// components/workspace/VideoPlayer.tsx
+// Added onTimeUpdate prop so ChaptersTab can track active chapter
 
 import { useRef, useImperativeHandle, forwardRef } from "react";
 
@@ -6,8 +8,13 @@ export interface VideoPlayerHandle {
   seekTo: (seconds: number) => void;
 }
 
-export const VideoPlayer = forwardRef<VideoPlayerHandle, { src: string }>(
-  function VideoPlayer({ src }, ref) {
+interface VideoPlayerProps {
+  src:           string;
+  onTimeUpdate?: (currentTime: number) => void;   // ← NEW
+}
+
+export const VideoPlayer = forwardRef<VideoPlayerHandle, VideoPlayerProps>(
+  function VideoPlayer({ src, onTimeUpdate }, ref) {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useImperativeHandle(ref, () => ({
@@ -27,8 +34,13 @@ export const VideoPlayer = forwardRef<VideoPlayerHandle, { src: string }>(
           src={src}
           className="video-el"
           preload="metadata"
+          onTimeUpdate={() => {
+            if (onTimeUpdate && videoRef.current) {
+              onTimeUpdate(videoRef.current.currentTime);
+            }
+          }}
         />
       </div>
     );
-  },
+  }
 );
