@@ -1,505 +1,491 @@
-# StudyLens AI
+# 🎓 StudyLens AI
 
-AI-powered video learning platform that converts educational videos into:
+StudyLens AI is an AI-powered learning platform that transforms videos and YouTube lectures into structured study material. It automatically generates transcripts, summaries, notes, quizzes, flashcards, chapters, and provides AI-powered Q&A using Retrieval-Augmented Generation (RAG).
 
-* Transcripts
-* AI Summaries
-* AI Notes
-* Interactive Quizzes
-* Semantic Search
-* RAG-based Question Answering
+The goal of StudyLens AI is to turn passive video watching into an active learning experience.
 
 ---
 
-# Features Completed
+# ✨ Features
 
-## 1. Video Upload System
+## 📹 Video Processing
 
-Users can upload educational videos directly from the frontend.
-
-### Implemented Using
-
-* Next.js
-* FastAPI
-* Axios
-* Multipart FormData
+- Upload local videos
+- Process YouTube lecture links
+- Background processing (non-blocking)
+- Session persistence
+- Resume after page refresh or login
 
 ---
 
-## 2. Audio Extraction
+## 🎙 Transcription
 
-Audio is extracted from uploaded videos using FFmpeg.
+Powered by **faster-whisper**
 
-### Implemented Using
-
-* FFmpeg
-* Python subprocess
-
-### Output
-
-* MP3 audio generated from uploaded video
+- Voice Activity Detection (VAD)
+- int8 CPU inference
+- Faster than OpenAI Whisper
+- Segment timestamps
 
 ---
 
-# 3. Speech-to-Text Transcription
+## 📝 AI Summary
 
-Video audio is converted into transcript text.
-
-### Implemented Using
-
-* OpenAI Whisper
-
-### Features
-
-* Full transcript generation
-* Timestamped transcript segments
-* Clickable video timestamps
+Generate concise summaries from lectures.
 
 ---
 
-# 4. AI Summary Generation
+## 📋 AI Notes
 
-StudyLens generates AI-powered summaries from transcript context.
-
-### Current Approach
-
-* Important transcript segments are selected
-* Context is passed to local LLM
-* Grounded summary generated
-
-### Implemented Using
-
-* Ollama
-* Phi model
-
-### Problems Solved
-
-* Reduced hallucinations
-* Reduced character confusion
-* Improved grounded summaries
+Generate clean bullet-point notes with post-processing.
 
 ---
 
-# 5. AI Notes Generation
+## ❓ Interactive Quiz
 
-AI automatically creates concise study notes from transcript content.
+Generate multiple-choice questions.
 
-### Features
+Features:
 
-* Bullet-point notes
-* Important concept extraction
-* Educational revision format
-
-### Implemented Using
-
-* Ollama
-* Prompt engineering
+- Score tracking
+- Reveal answers
+- Retry support
 
 ---
 
-# 6. Interactive Quiz Generation
+## 🧠 Flashcards
 
-AI generates MCQ-based quizzes from the transcript.
+Interactive flashcards with:
 
-### Features
-
-* Multiple choice questions
-* 4 options per question
-* Correct answer validation
-* Interactive frontend quiz system
-* Green/red answer feedback
-
-### Implemented Using
-
-* Ollama
-* Custom quiz parser
-* React state management
-
-### Problems Solved
-
-* JSON parsing failures
-* Prompt leakage
-* Answer mapping issues
-* Early stopping generation
+- Card flipping
+- Navigation
+- Completion screen
 
 ---
 
-# 7. Semantic Transcript Search
+## 📖 Chapter Detection
 
-Users can search transcript content semantically.
+Automatically detects topics and timestamps.
 
-### Example
+Example:
 
-Searching:
-
-```txt
-kindness
+```text
+00:00 Introduction
+05:12 Variables
+14:30 Loops
+25:15 Functions
 ```
 
-can retrieve:
-
-* helping
-* friendship
-* respect
-* saving
-
-without exact keyword matching.
-
-### Implemented Using
-
-* Sentence Transformers
-* ChromaDB
-* Embeddings
-* Vector Search
+Users can click chapters to jump to that timestamp.
 
 ---
 
-# 8. RAG-Based Question Answering
+## 🔎 Semantic Search
 
-StudyLens uses Retrieval-Augmented Generation for grounded AI answers.
-
-### Flow
-
-Question
-→ Semantic Retrieval
-→ Relevant Transcript Chunks
-→ AI Answer Generation
-
-### Features
-
-* Reduced hallucinations
-* Context-aware answers
-* Grounded responses
-* Long transcript handling
-
-### Implemented Using
-
-* ChromaDB
-* Embeddings
-* Ollama
-* Phi model
+Search transcript content semantically.
 
 ---
 
-# 9. Interactive Transcript Timeline
+## 🤖 Single Video RAG
 
-Users can click transcript segments to jump directly to that timestamp in the video.
+Ask questions about the currently opened lecture.
 
-### Features
+Features:
 
-* Timestamp navigation
-* Interactive playback
-* Semantic transcript exploration
-
----
-
-# Tech Stack
-
-## Frontend
-
-* Next.js
-* React
-* TypeScript
-* Tailwind CSS
-* Axios
-
-## Backend
-
-* FastAPI
-* Python
-* Uvicorn
-
-## AI / ML
-
-* Whisper
-* Ollama
-* Phi model
-* Sentence Transformers
-
-## Vector Database
-
-* ChromaDB
-
-## Media Processing
-
-* FFmpeg
+- Query expansion
+- Context retrieval
+- Chunk deduplication
+- Neighbor merging
+- Hallucination detection
 
 ---
 
-# Current Project Architecture
+## 🌍 Multi-Video RAG
 
-```txt
-Video Upload
-    ↓
-Audio Extraction (FFmpeg)
-    ↓
-Whisper Transcription
-    ↓
-Transcript Segments
-    ↓
-Embeddings Generation
-    ↓
-ChromaDB Vector Storage
-    ↓
-Semantic Search / RAG
-    ↓
-AI Features
+Ask questions across all uploaded videos.
+
+Examples:
+
+```text
+What common advice appears across my motivation videos?
+
+What do all my lectures say about discipline?
+
+Summarize everything I learned about Python.
+```
+
+Features:
+
+- Cross-session retrieval
+- Source attribution
+- User isolation
+- Session balancing
+
+---
+
+## ⚡ Parallel AI Generation
+
+Runs simultaneously:
+
 - Summary
 - Notes
 - Quiz
-- Q&A
+- Flashcards
+- Chapters
+
+using:
+
+```python
+asyncio.gather()
+```
+
+to reduce waiting time.
+
+---
+
+## 📊 Processing Pipeline
+
+```text
+Upload Video / YouTube URL
+            │
+            ▼
+      Background Worker
+            │
+            ▼
+      Audio Extraction
+            │
+            ▼
+       Faster Whisper
+            │
+            ▼
+         Embeddings
+            │
+            ▼
+     Parallel AI Tasks
+ ┌────────┬────────┬────────┬────────┬────────┐
+ │Summary │ Notes  │ Quiz   │Cards   │Chapter │
+ └────────┴────────┴────────┴────────┴────────┘
+            │
+            ▼
+       Save to Database
+            │
+            ▼
+            READY
 ```
 
 ---
 
-# Backend APIs
+# 🏗 Tech Stack
 
-## Upload API
+## Frontend
 
-```txt
-POST /upload
-```
+- Next.js 15
+- TypeScript
+- Tailwind CSS
+- Zustand
+- Server Actions
 
-### Returns
+## Backend
 
-* transcript
-* summary
-* notes
-* quiz
-* timestamps
-* video URL
+- FastAPI
+- Python
+- Ollama
+- faster-whisper
+- SentenceTransformers
+- ChromaDB
+- yt-dlp
+- FFmpeg
 
----
+## Database
 
-## Semantic Search API
+- PostgreSQL (Neon)
+- Prisma ORM
 
-```txt
-POST /search
-```
+## Authentication
 
-### Input
-
-```json
-{
-  "query": "friendship"
-}
-```
-
----
-
-## AI Q&A API
-
-```txt
-POST /qa
-```
-
-### Input
-
-```json
-{
-  "question": "What is the moral of the story?"
-}
-```
+- JWT
+- Refresh Tokens
+- HttpOnly Cookies
+- bcrypt
 
 ---
 
-# Problems Solved During Development
+# 📂 Database Models
 
-## AI Hallucinations
+## User
 
-Solved using:
+Stores:
 
-* RAG
-* grounded prompts
-* transcript chunk selection
-
----
-
-## JSON Parsing Errors
-
-Solved using:
-
-* custom quiz parser
-* structured text generation
+- Name
+- Email
+- Password hash
 
 ---
 
-## Semantic Search Empty Results
+## Session
 
-Solved using:
+Stores:
 
-* Persistent ChromaDB
-* vector storage fixes
-
----
-
-## Prompt Leakage
-
-Solved using:
-
-* improved prompt engineering
-* grounded constraints
-
----
-
-# Future Improvements
-
-## 1. Modern SaaS UI
-
-Planned improvements:
-
-* sidebar layout
-* tabs
-* dark mode
-* animations
-* glassmorphism
-* responsive design
+- Video metadata
+- Transcript
+- Summary
+- Notes
+- Quiz
+- Flashcards
+- Chapters
+- Status
+- Source
+- Duration
 
 ---
 
-## 2. Authentication
+## RefreshToken
 
-Planned:
+Stores:
 
-* Clerk authentication
-* user accounts
-* protected dashboards
-
----
-
-## 3. User Dashboard
-
-Users will be able to:
-
-* view uploaded videos
-* access notes
-* access quizzes
-* manage learning sessions
+- Refresh token
+- Expiry date
 
 ---
 
-## 4. Interactive Quiz System Improvements
+# 🔐 Authentication
 
-Planned:
-
-* scoring system
-* quiz explanations
-* progress tracking
-* retry quiz
-
----
-
-## 5. Flashcards Generation
-
-AI-generated flashcards for revision.
+- Register
+- Login
+- Logout
+- Access tokens
+- Refresh tokens
+- Silent token rotation
+- Protected routes
 
 ---
 
-## 6. AI Study Assistant
+# 📈 Progress Tracking
 
-Future features:
+11 pipeline stages:
 
-* explain like beginner
-* chapter-wise notes
-* topic extraction
-* revision assistant
-
----
-
-## 7. Multi-Video RAG
-
-Search and ask questions across multiple uploaded videos.
-
----
-
-## 8. Deployment
-
-Planned deployment:
-
-* Vercel (Frontend)
-* Render/Railway (Backend)
-* Cloud vector database
-
----
-
-# Local Setup
-
-## Backend Setup
-
-```bash
-cd backend
-
-python -m venv venv
-
-venv\Scripts\activate
-
-pip install -r requirements.txt
-```
-
-Run backend:
-
-```bash
-uvicorn app.main:app --reload
+```text
+PROCESSING
+DOWNLOADING
+EXTRACTING_AUDIO
+TRANSCRIBING
+GENERATING_EMBEDDINGS
+GENERATING_SUMMARY
+GENERATING_NOTES
+GENERATING_QUIZ
+GENERATING_FLASHCARDS
+READY
+ERROR
 ```
 
 ---
 
-## Frontend Setup
+# 💾 Persistent Sessions
 
-```bash
-cd frontend
+Everything is stored permanently:
 
-npm install
+- Transcript
+- Summary
+- Notes
+- Quiz
+- Flashcards
+- Chapters
 
-npm run dev
+Users don't need to regenerate results.
+
+---
+
+# 🚀 Current Features
+
+| Feature | Status |
+|-----------|--------|
+| Video Upload | ✅ |
+| YouTube Processing | ✅ |
+| Faster Whisper | ✅ |
+| AI Summary | ✅ |
+| AI Notes | ✅ |
+| Interactive Quiz | ✅ |
+| Flashcards | ✅ |
+| Chapter Detection | ✅ |
+| Semantic Search | ✅ |
+| Single Video RAG | ✅ |
+| Multi-Video RAG | ✅ |
+| Background Processing | ✅ |
+| Parallel AI Generation | ✅ |
+| Session Persistence | ✅ |
+| JWT Authentication | ✅ |
+| Refresh Tokens | ✅ |
+| Dashboard | ✅ |
+
+---
+
+# 🔮 Future Scope
+
+## Session-Aware Assistant
+
+Support queries like:
+
+```text
+What happened in session 2?
+
+Summarize my latest lecture.
+
+Compare session A and session B.
 ```
 
 ---
 
-# Required Software
+## Intent Router
 
-## Install FFmpeg
+Classify queries into:
 
-FFmpeg is required for audio extraction.
+- Session Query
+- Knowledge Query
+- Comparison Query
+- Cross-Session Query
 
-## Install Ollama
+and route accordingly.
 
-Install Ollama locally and pull model:
+---
 
-```bash
-ollama pull phi
+## Smarter Multi-Video Assistant
+
+Current:
+
+```text
+Answer
+```
+
+Future:
+
+```text
+Lecture A says...
+
+Lecture B says...
+
+Common themes
+
+Differences
+
+Conclusion
 ```
 
 ---
 
-# Current Project Status
+## AI Tutor Mode
 
-StudyLens AI is currently in MVP stage.
+Transform StudyLens into an interactive teacher.
 
-The platform already supports:
+Example:
 
-* AI transcription
-* Semantic search
-* RAG-based QA
-* AI notes
-* AI quizzes
-* Interactive learning workflows
-
-The next phase focuses on:
-
-* better UI/UX
-* authentication
-* cloud deployment
-* advanced educational AI features
+```text
+Explain recursion
+↓
+Concept
+↓
+Example
+↓
+Practice Question
+↓
+Evaluate Answer
+```
 
 ---
 
-# Author
+## Learning Analytics
 
-Built as an AI-powered educational learning platform project using modern AI engineering concepts including:
+Track:
 
-* RAG
-* embeddings
-* vector databases
-* semantic retrieval
-* local LLM inference
+- Study hours
+- Quiz scores
+- Topics studied
+- Questions asked
+- Sessions completed
+
+---
+
+## Revision Mode
+
+Generate:
+
+- 5-minute revision
+- 10-minute revision
+- Exam sheets
+- Key concepts
+
+---
+
+## Chapter-Level RAG
+
+Examples:
+
+```text
+Explain chapter 3.
+
+Quiz me on chapter 5.
+```
+
+---
+
+## Cross-Session Revision
+
+Generate revision sheets from multiple videos.
+
+---
+
+## Knowledge Graph
+
+Visualize learned concepts:
+
+```text
+AI
+├── RAG
+├── Transformers
+└── LLMs
+
+Python
+├── Variables
+├── Loops
+└── Functions
+```
+
+---
+
+## Long-Term Vision
+
+StudyLens AI aims to evolve from:
+
+```text
+Video Summarizer
+```
+
+into
+
+```text
+Personal AI Knowledge Base
++
+Interactive Tutor
++
+Learning Assistant
+```
+
+inspired by:
+
+- NotebookLM
+- Khanmigo
+- Perplexity
+- AI Study Assistants
+
+---
+
+# ❤️ Built With
+
+- FastAPI
+- Next.js
+- Ollama
+- faster-whisper
+- ChromaDB
+- Prisma
+- Neon PostgreSQL
+
+---
