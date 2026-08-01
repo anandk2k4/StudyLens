@@ -1,7 +1,6 @@
-# app/api/upload.py
-# No auth dependency on FastAPI — Next.js handles auth.
-# session_id and user_id are passed as form fields from the frontend.
-
+"""
+app/api/upload.py — pass title and source to pipeline for embedding metadata
+"""
 from fastapi import APIRouter, UploadFile, File, Form, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -23,8 +22,10 @@ class UploadStarted(BaseModel):
 async def upload_video(
     background_tasks: BackgroundTasks,
     file:       UploadFile = File(...),
-    session_id: Optional[str] = Form(None),   # passed by frontend
-    user_id:    Optional[str] = Form(None),   # passed by frontend
+    session_id: Optional[str] = Form(None),
+    user_id:    Optional[str] = Form(None),
+    title:      Optional[str] = Form(None),    # ← NEW
+    source:     Optional[str] = Form("UPLOAD"),# ← NEW
 ):
     ensure_upload_dir()
 
@@ -41,7 +42,6 @@ async def upload_video(
             detail={"stage": exc.stage, "message": exc.message},
         )
 
-    # Use frontend-provided session_id if available, otherwise generate one
     if session_id:
         import os
         video_path = os.path.join("uploads", f"{session_id}.mp4")
@@ -56,7 +56,7 @@ async def upload_video(
     video_url = f"http://127.0.0.1:8000/{video_path}"
     logger.info(
         f"Upload saved: {video_path} ({len(content)//1024} KB) "
-        f"session={used_session_id} user={user_id or 'unknown'}"
+        f"session={used_session_id} user={user_id} title={title}"
     )
 
     background_tasks.add_task(
@@ -64,8 +64,9 @@ async def upload_video(
         session_id=used_session_id,
         user_id=user_id or "",
         video_path=video_path,
-        filename=file.filename or "upload",
+        filename=title or file.filename or "upload",   # use provided title
         video_url=video_url,
+        source=source or "UPLOAD",                      # ← NEW
     )
 
     return UploadStarted(session_id=used_session_id)

@@ -1,19 +1,19 @@
 """
-app/workers/pipeline.py — updated to include chapters in parallel generation.
+app/workers/pipeline.py — full updated file.
 
-Changes from your current file:
-1. Import generate_chapters
-2. Add chapters to asyncio.gather()
-3. Include chapters in the READY update payload
+Changes from previous version:
+- run_upload_pipeline accepts `source` param
+- run_youtube_pipeline accepts `source` param
+- store_segments called with full metadata (user_id, session_id, title, source)
+- chapters added to gather (if chapter_service exists)
 """
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from app.core.logging import logger
-from app.core.timing import Timer, log_summary, init_timing
-from app.core.status import ProcessingStatus
-from app.core.errors import StudyLensError
+from app.core.timing  import Timer, log_summary, init_timing
+from app.core.status  import ProcessingStatus
 
 from app.services.audio_service         import extract_audio
 from app.services.transcription_service import transcribe_audio
@@ -22,21 +22,19 @@ from app.services.summary_service       import generate_summary
 from app.services.notes_service         import generate_notes
 from app.services.quiz_service          import generate_quiz
 from app.services.flashcard_service     import generate_flashcards
-from app.services.chapter_service       import generate_chapters   # ← NEW
+from app.services.chapter_service       import generate_chapters
 from app.utils.file_utils               import cleanup_files
 
-_executor = ThreadPoolExecutor(max_workers=5)   # bumped from 4 to 5
+import httpx, os
+
+_executor     = ThreadPoolExecutor(max_workers=5)
+_NEXTJS_URL   = os.getenv("NEXTJS_URL",       "http://localhost:3000")
+_INTERNAL_KEY = os.getenv("INTERNAL_API_KEY", "")
 
 
 async def _run(fn, *args):
     loop = asyncio.get_event_loop()
     return await loop.run_in_executor(_executor, fn, *args)
-
-
-import httpx, os
-
-_NEXTJS_URL   = os.getenv("NEXTJS_URL",       "http://localhost:3000")
-_INTERNAL_KEY = os.getenv("INTERNAL_API_KEY", "")
 
 
 async def _update_status(session_id, user_id, status, extra=None):
@@ -58,6 +56,7 @@ async def run_upload_pipeline(
     video_path: str,
     filename:   str,
     video_url:  str,
+    source:     str = "UPLOAD",   # ← NEW
 ) -> None:
     init_timing(session_id)
     audio_path: Optional[str] = None
@@ -77,19 +76,27 @@ async def run_upload_pipeline(
 
         await _update_status(session_id, user_id, ProcessingStatus.GENERATING_EMBEDDINGS)
         with Timer(session_id, "embeddings"):
-            await _run(store_segments, segments, session_id)
+            # ── Full metadata for multi-session RAG ───────────────────────
+            await _run(
+                store_segments,
+                segments,
+                session_id,   # video_id
+                user_id,      # user_id
+                session_id,   # session_id
+                filename,     # title
+                source,       # source
+            )
 
         await _update_status(session_id, user_id, ProcessingStatus.GENERATING_SUMMARY)
         logger.info(f"[{session_id}] Starting parallel AI generation")
 
         with Timer(session_id, "parallel_ai_generation"):
-            # ── chapters added to gather ───────────────────────────────────
             summary, notes, quiz, flashcards, chapters = await asyncio.gather(
                 _run(generate_summary,    segments),
                 _run(generate_notes,      segments),
                 _run(generate_quiz,       segments),
                 _run(generate_flashcards, segments),
-                _run(generate_chapters,   segments),   # ← NEW
+                _run(generate_chapters,   segments),
             )
 
         with Timer(session_id, "db_update"):
@@ -106,13 +113,13 @@ async def run_upload_pipeline(
                     "notes":      notes,
                     "quiz":       quiz,
                     "flashcards": flashcards,
-                    "chapters":   chapters,            # ← NEW
+                    "chapters":   chapters,
                     "segments":   segments,
                 },
             )
 
         log_summary(session_id)
-        logger.info(f"[{session_id}] Pipeline complete ✓")
+        logger.info(f"[{session_id}] Upload pipeline complete ✓")
 
     except Exception as exc:
         logger.error(f"[{session_id}] Pipeline failed: {exc}", exc_info=True)
@@ -127,6 +134,7 @@ async def run_youtube_pipeline(
     session_id: str,
     user_id:    str,
     url:        str,
+    source:     str = "YOUTUBE",  # ← NEW
 ) -> None:
     from app.services.youtube_service import download_youtube_video
 
@@ -157,7 +165,16 @@ async def run_youtube_pipeline(
 
         await _update_status(session_id, user_id, ProcessingStatus.GENERATING_EMBEDDINGS)
         with Timer(session_id, "embeddings"):
-            await _run(store_segments, segments, session_id)
+            # ── Full metadata for multi-session RAG ───────────────────────
+            await _run(
+                store_segments,
+                segments,
+                session_id,   # video_id
+                user_id,      # user_id
+                session_id,   # session_id
+                title,        # title (real YouTube title)
+                source,       # YOUTUBE
+            )
 
         await _update_status(session_id, user_id, ProcessingStatus.GENERATING_SUMMARY)
         logger.info(f"[{session_id}] Starting parallel AI generation")
@@ -168,7 +185,7 @@ async def run_youtube_pipeline(
                 _run(generate_notes,      segments),
                 _run(generate_quiz,       segments),
                 _run(generate_flashcards, segments),
-                _run(generate_chapters,   segments),   # ← NEW
+                _run(generate_chapters,   segments),
             )
 
         with Timer(session_id, "db_update"):
@@ -185,7 +202,7 @@ async def run_youtube_pipeline(
                     "notes":      notes,
                     "quiz":       quiz,
                     "flashcards": flashcards,
-                    "chapters":   chapters,            # ← NEW
+                    "chapters":   chapters,
                     "segments":   segments,
                 },
             )

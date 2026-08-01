@@ -1,5 +1,6 @@
-# app/api/youtube.py — no auth dependency
-
+"""
+app/api/youtube.py — pass source to pipeline
+"""
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -14,6 +15,7 @@ class YouTubeRequest(BaseModel):
     url:        str
     session_id: Optional[str] = None
     user_id:    Optional[str] = None
+    source:     Optional[str] = "YOUTUBE"   # ← NEW
 
 
 class YouTubeStarted(BaseModel):
@@ -30,7 +32,7 @@ async def download_and_process(
     if not url:
         raise HTTPException(status_code=400, detail={"message": "URL is required."})
     if "youtube.com" not in url and "youtu.be" not in url:
-        raise HTTPException(status_code=400, detail={"message": "Only YouTube URLs are supported."})
+        raise HTTPException(status_code=400, detail={"message": "Only YouTube URLs supported."})
 
     session_id = data.session_id or ""
     user_id    = data.user_id    or ""
@@ -42,6 +44,7 @@ async def download_and_process(
         session_id=session_id,
         user_id=user_id,
         url=url,
+        source=data.source or "YOUTUBE",    # ← NEW
     )
 
     return YouTubeStarted(session_id=session_id)

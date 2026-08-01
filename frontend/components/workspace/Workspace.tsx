@@ -5,22 +5,26 @@ import { useStore, SessionFull, isTerminalStatus } from "@/lib/store";
 import { VideoPlayer, VideoPlayerHandle } from "./VideoPlayer";
 import { EmptyState } from "./EmptyState";
 import { ProcessingIndicator } from "./ProcessingIndicator";
-import { SummaryTab }    from "@/components/tabs/SummaryTab";
-import { NotesTab }      from "@/components/tabs/NotesTab";
-import { QuizTab }       from "@/components/tabs/QuizTab";
+import { SummaryTab } from "@/components/tabs/SummaryTab";
+import { NotesTab } from "@/components/tabs/NotesTab";
+import { QuizTab } from "@/components/tabs/QuizTab";
 import { TranscriptTab } from "@/components/tabs/TranscriptTab";
-import { ChatTab }       from "@/components/tabs/ChatTab";
+import { ChatTab } from "@/components/tabs/ChatTab";
 import { FlashcardsTab } from "@/components/tabs/FlashcardsTab";
-import { ChaptersTab }   from "@/components/tabs/ChaptersTab";   // ← NEW
+import { ChaptersTab } from "@/components/tabs/ChaptersTab";
+import { TutorTab } from "@/components/tabs/TutorTab";   // ← NEW
+import { RevisionTab } from "@/components/tabs/RevisionTab";
 
 const TABS = [
-  { id: "summary",    label: "Summary",    icon: "📄" },
-  { id: "notes",      label: "Notes",      icon: "📝" },
-  { id: "quiz",       label: "Quiz",       icon: "🧠" },
+  { id: "summary", label: "Summary", icon: "📄" },
+  { id: "notes", label: "Notes", icon: "📝" },
+  { id: "quiz", label: "Quiz", icon: "🧠" },
   { id: "transcript", label: "Transcript", icon: "🔍" },
-  { id: "chat",       label: "Ask AI",     icon: "💬" },
+  { id: "chat", label: "Ask AI", icon: "💬" },
   { id: "flashcards", label: "Flashcards", icon: "🃏" },
-  { id: "chapters",   label: "Chapters",   icon: "📖" },   // ← NEW
+  { id: "chapters", label: "Chapters", icon: "📖" },
+  { id: "tutor", label: "Tutor", icon: "📚" },
+  { id: "revision", label: "Revision", icon: "⭐" },      // ← NEW
 ] as const;
 
 export function Workspace() {
@@ -31,8 +35,8 @@ export function Workspace() {
 
   const session: SessionFull | null = activeSessionFull;
   const sessionMeta = sessions.find((s) => s.id === activeSessionId) ?? null;
-  const playerRef   = useRef<VideoPlayerHandle>(null);
-  const [currentTime, setCurrentTime] = useState(0);  // ← NEW — track playback
+  const playerRef = useRef<VideoPlayerHandle>(null);
+  const [currentTime, setCurrentTime] = useState(0);
 
   function seekTo(t: number) { playerRef.current?.seekTo(t); }
 
@@ -78,11 +82,7 @@ export function Workspace() {
       </div>
 
       {session.videoUrl && (
-        <VideoPlayer
-          ref={playerRef}
-          src={session.videoUrl}
-          onTimeUpdate={setCurrentTime}   // ← NEW — pass time to ChaptersTab
-        />
+        <VideoPlayer ref={playerRef} src={session.videoUrl} onTimeUpdate={setCurrentTime} />
       )}
 
       <div className="tab-bar">
@@ -99,21 +99,39 @@ export function Workspace() {
       </div>
 
       <div className="tab-panel">
-        {activeTab === "summary"    && session.summary    && <SummaryTab summary={session.summary} />}
-        {activeTab === "notes"      && session.notes      && <NotesTab notes={session.notes} />}
-        {activeTab === "quiz"       && session.quiz       && <QuizTab quiz={session.quiz} />}
-        {activeTab === "transcript" && session.segments   && (
+        {activeTab === "summary" && session.summary && <SummaryTab summary={session.summary} />}
+        {activeTab === "notes" && session.notes && <NotesTab notes={session.notes} />}
+        {activeTab === "quiz" && session.quiz && <QuizTab quiz={session.quiz} />}
+        {activeTab === "transcript" && session.segments && (
           <TranscriptTab segments={session.segments} videoId={session.videoId ?? session.id} onSeek={seekTo} />
         )}
         {activeTab === "chat" && (
           <ChatTab videoId={session.videoId ?? session.id} onSeek={seekTo} />
         )}
         {activeTab === "flashcards" && <FlashcardsTab flashcards={session.flashcards} />}
-        {activeTab === "chapters"   && (              // ← NEW
-          <ChaptersTab
+        {activeTab === "chapters" && (
+          <ChaptersTab chapters={session.chapters} currentTime={currentTime} onSeek={seekTo} />
+        )}
+        {activeTab === "tutor" && (                                          // ← tutor tab
+          <TutorTab
+            sessionId={session.id}
             chapters={session.chapters}
-            currentTime={currentTime}
+            segments={session.segments}
             onSeek={seekTo}
+          />
+        )}
+
+        {activeTab === "revision" && (
+          <RevisionTab
+            sessionId={session.id}
+            userId={(session as any).userId ?? ""}
+            title={session.title}
+            summary={session.summary}
+            notes={session.notes}
+            chapters={session.chapters}
+            quiz={session.quiz}
+            flashcards={session.flashcards}
+            cachedRevision={session.revision}
           />
         )}
       </div>

@@ -63,6 +63,8 @@ model Session {
   segments   Json?
   flashcards Json? 
   chapters   Json? 
+  revision     Json?
+  tutorMessages TutorMessage[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -71,6 +73,21 @@ model Session {
   @@index([userId, createdAt(sort: Desc)])
   @@index([status]) 
   @@map("sessions")
+}
+
+// ── NEW ───────────────────────────────────────────────────────────────────────
+model TutorMessage {
+  id         String   @id @default(cuid())
+  sessionId  String   @map("session_id")
+  role       String              // "user" | "assistant"
+  content    Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([sessionId, createdAt])
+  @@map("tutor_messages")
 }
 
 // ── Refresh Tokens ────────────────────────────────────────────────────────────
@@ -84,4 +101,4 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
-}
+} 

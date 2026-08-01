@@ -4,7 +4,7 @@ app/core/config.py — extended for Phase 5 (background worker needs to call Nex
 from functools import lru_cache
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
+from pathlib import Path
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     # FFmpeg
     ffmpeg_bin_path: str = ""
 
+    # Gemini 2.5 Flash
+    gemini_api_key: str = ""
+
     # ── Phase 5: inter-service communication ──────────────────────────────────
     # URL of the Next.js frontend (background worker posts status updates here)
     nextjs_base_url: str = "http://localhost:3000"
@@ -68,3 +71,7 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+print("Current working directory:", Path.cwd())
+print("Config env file:", Path(".env").resolve())
+print("Gemini key:", Settings().gemini_api_key)

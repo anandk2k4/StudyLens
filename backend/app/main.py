@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.core.errors import StudyLensError, studylens_exception_handler, generic_exception_handler
 from app.core.logging import logger
-from app.api import upload, qa, search, health, youtube
+from app.api import upload, qa, search, health, youtube, tutor, revision
 
 
 @asynccontextmanager
@@ -52,6 +52,8 @@ app.include_router(qa.router)
 app.include_router(search.router)
 app.include_router(health.router)
 app.include_router(youtube.router)
+app.include_router(tutor.router)
+app.include_router(revision.router)
 
 # ── Static files (uploaded videos) ───────────────────────────────────────────
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")

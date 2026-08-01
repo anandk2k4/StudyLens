@@ -16,3 +16,4 @@ sentence-transformers
 chromadb
 aiofiles
 httpx
+google-genai

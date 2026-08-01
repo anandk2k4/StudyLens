@@ -34,7 +34,7 @@ export type SessionStatus =
 
 export type ActiveTab =
   | "summary" | "notes" | "quiz" | "transcript"
-  | "chat" | "flashcards" | "chapters";     // ← NEW
+  | "chat" | "flashcards" | "chapters" | "tutor" | "revision";     // ← NEW
 
 export interface SessionMeta {
   id:            string;
@@ -57,7 +57,8 @@ export interface SessionFull extends SessionMeta {
   quiz?:       any;
   segments?:   any;
   flashcards?: any;
-  chapters?:   any;   // ← NEW — Prisma JsonValue → Chapter[] at point of use
+  chapters?:   any; 
+  revision?:   any;  // ← NEW — Prisma JsonValue → 
 }
 
 export interface User {
