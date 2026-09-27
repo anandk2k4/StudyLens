@@ -32,11 +32,38 @@ enum SessionStatus {
   DOWNLOADING
   EXTRACTING_AUDIO
   TRANSCRIBING
+  BUILDING_KNOWLEDGE_BASE
+  KNOWLEDGE_BASE_READY
   GENERATING_EMBEDDINGS
+  GENERATING_FEATURES
   GENERATING_SUMMARY
   GENERATING_NOTES
   GENERATING_QUIZ
   GENERATING_FLASHCARDS
+  READY
+  ERROR
+}
+
+enum KBStatus {
+  PENDING
+  BUILDING
+  EXTRACTING
+  EMBEDDING
+  READY
+  ERROR
+}
+
+enum FeatureType {
+  SUMMARY
+  NOTES
+  QUIZ
+  FLASHCARDS
+  CHAPTERS
+}
+
+enum FeatureStatus {
+  PENDING
+  GENERATING
   READY
   ERROR
 }
@@ -65,6 +92,8 @@ model Session {
   chapters   Json? 
   revision     Json?
   tutorMessages TutorMessage[]
+  knowledgeBase KnowledgeBase?
+  generatedFeatures GeneratedFeature[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -73,6 +102,67 @@ model Session {
   @@index([userId, createdAt(sort: Desc)])
   @@index([status]) 
   @@map("sessions")
+}
+
+// ── Knowledge Base ────────────────────────────────────────────────────────────
+model KnowledgeBase {
+  id          String   @id @default(cuid())
+  sessionId   String   @unique @map("session_id")
+  session     Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  cleanedTranscript String?  @db.Text
+  status       KBStatus  @default(PENDING)
+  errorMessage String?   @map("error_message")
+
+  topics             Json?
+  concepts           Json?
+  keyFacts           Json?   @map("key_facts")
+  relationships      Json?
+  learningObjectives Json?   @map("learning_objectives")
+  chapters           Json?
+
+  chunks    TranscriptChunk[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("knowledge_bases")
+}
+
+model TranscriptChunk {
+  id              String        @id @default(cuid())
+  knowledgeBaseId String        @map("knowledge_base_id")
+  knowledgeBase   KnowledgeBase @relation(fields: [knowledgeBaseId], references: [id], onDelete: Cascade)
+
+  index     Int
+  text      String  @db.Text
+  startTime Float   @map("start_time")
+  endTime   Float   @map("end_time")
+
+  topicLabel String? @map("topic_label")
+  importance Float   @default(0.5)
+
+  @@index([knowledgeBaseId])
+  @@index([knowledgeBaseId, index])
+  @@map("transcript_chunks")
+}
+
+model GeneratedFeature {
+  id        String        @id @default(cuid())
+  sessionId String        @map("session_id")
+  session   Session       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  featureType  FeatureType   @map("feature_type")
+  status       FeatureStatus @default(PENDING)
+  errorMessage String?       @map("error_message")
+  retryCount   Int           @default(0) @map("retry_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([sessionId, featureType])
+  @@index([sessionId])
+  @@map("generated_features")
 }
 
 // ── NEW ───────────────────────────────────────────────────────────────────────

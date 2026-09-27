@@ -15,17 +15,20 @@ const POLL_INTERVAL_MS  = 3000;
 
 // Status labels — mirrors backend ProcessingStatus
 export const STATUS_LABELS: Record<string, string> = {
-  PROCESSING:             "Processing…",
-  DOWNLOADING:            "Downloading video…",
-  EXTRACTING_AUDIO:       "Extracting audio…",
-  TRANSCRIBING:           "Transcribing audio…",
-  GENERATING_EMBEDDINGS:  "Building search index…",
-  GENERATING_SUMMARY:     "Generating summary…",
-  GENERATING_NOTES:       "Generating notes…",
-  GENERATING_QUIZ:        "Generating quiz…",
-  GENERATING_FLASHCARDS:  "Generating flashcards…",
-  READY:                  "Ready",
-  ERROR:                  "Failed",
+  PROCESSING:              "Processing…",
+  DOWNLOADING:             "Downloading video…",
+  EXTRACTING_AUDIO:        "Extracting audio…",
+  TRANSCRIBING:            "Transcribing audio…",
+  BUILDING_KNOWLEDGE_BASE: "Building Knowledge Base…",
+  KNOWLEDGE_BASE_READY:    "Knowledge Base ready…",
+  GENERATING_EMBEDDINGS:   "Building search index…",
+  GENERATING_FEATURES:     "Generating study materials…",
+  GENERATING_SUMMARY:      "Generating summary…",
+  GENERATING_NOTES:        "Generating notes…",
+  GENERATING_QUIZ:         "Generating quiz…",
+  GENERATING_FLASHCARDS:   "Generating flashcards…",
+  READY:                   "Ready",
+  ERROR:                   "Failed",
 };
 
 export function getStatusLabel(status: string): string {

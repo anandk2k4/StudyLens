@@ -1,203 +1,128 @@
-// Shared wrapper for login + register pages
+import React from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { CheckCircle2 } from "lucide-react";
+
 export function AuthLayout({
   children,
   title,
   subtitle,
+  variant,
+  rightContent,
 }: {
   children: React.ReactNode;
   title: string;
   subtitle: string;
+  variant: "login" | "register";
+  rightContent?: React.ReactNode;
 }) {
   return (
-    <>
-      <style>{`
-        .auth-shell {
-          min-height: 100vh;
-          background: var(--bg);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          padding: 24px;
-          font-family: var(--font-body);
-        }
-        .auth-card {
-          width: 100%;
-          max-width: 420px;
-        }
+    <div className="flex min-h-screen bg-[#05090B] text-[#F5F7F7] font-sans selection:bg-[#00D9C0]/30 selection:text-white">
+      {/* Left Column (Form) */}
+      <div className="flex w-full flex-col justify-center px-6 py-12 md:w-1/2 lg:px-20 xl:px-32 bg-[#05090B] relative z-10">
+        <div className="mx-auto w-full max-w-md">
+          {/* Logo */}
+          <Link href="/" className="mb-10 inline-block">
+            <Image
+              src="/studylens-brand-logo.png"
+              alt="StudyLens"
+              width={160}
+              height={40}
+              className="h-10 w-auto"
+              priority
+            />
+          </Link>
 
-        /* ── Logo ── */
-        .auth-logo {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin-bottom: 36px;
-        }
-        .auth-logo-mark {
-          width: 34px; height: 34px;
-          background: var(--accent);
-          color: #0a0a0c;
-          border-radius: 9px;
-          font-family: var(--font-display);
-          font-size: 14px; font-weight: 700;
-          display: flex; align-items: center; justify-content: center;
-        }
-        .auth-logo-text {
-          font-family: var(--font-display);
-          font-size: 19px;
-          letter-spacing: -0.01em;
-          color: var(--text);
-        }
+          {/* Heading */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-2">
+              {title}
+            </h1>
+            <p className="text-sm text-[#8B9A9D] mb-8">
+              {subtitle}
+            </p>
+          </motion.div>
 
-        /* ── Heading ── */
-        .auth-heading {
-          font-family: var(--font-display);
-          font-size: 28px;
-          letter-spacing: -0.02em;
-          color: var(--text);
-          margin-bottom: 6px;
-          line-height: 1.1;
-        }
-        .auth-sub {
-          font-size: 14px;
-          color: var(--text2);
-          margin-bottom: 32px;
-          font-weight: 300;
-        }
-
-        /* ── Form elements ── */
-        .auth-form { display: flex; flex-direction: column; gap: 16px; }
-
-        .field { display: flex; flex-direction: column; gap: 6px; }
-        .field-label {
-          font-size: 12px;
-          font-weight: 500;
-          color: var(--text2);
-          letter-spacing: 0.02em;
-        }
-        .field-input {
-          background: var(--surface);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          padding: 11px 14px;
-          font-size: 14px;
-          color: var(--text);
-          font-family: var(--font-body);
-          outline: none;
-          transition: border-color 0.15s, box-shadow 0.15s;
-          width: 100%;
-        }
-        .field-input::placeholder { color: var(--muted); }
-        .field-input:focus {
-          border-color: var(--accent);
-          box-shadow: 0 0 0 3px rgba(200, 169, 110, 0.12);
-        }
-        .field-input.error-input { border-color: var(--danger); }
-        .field-input.error-input:focus {
-          box-shadow: 0 0 0 3px rgba(201, 110, 110, 0.12);
-        }
-        .field-error {
-          font-size: 12px;
-          color: var(--danger);
-          font-family: var(--font-mono);
-        }
-
-        /* ── Password toggle ── */
-        .password-wrap { position: relative; }
-        .password-toggle {
-          position: absolute; right: 12px; top: 50%;
-          transform: translateY(-50%);
-          background: none; border: none;
-          color: var(--muted); cursor: pointer;
-          font-size: 13px; padding: 2px 4px;
-          transition: color 0.15s;
-        }
-        .password-toggle:hover { color: var(--text2); }
-
-        /* ── Submit button ── */
-        .auth-submit {
-          width: 100%; padding: 13px;
-          background: var(--accent); color: #0a0a0c;
-          border: none; border-radius: 10px;
-          font-family: var(--font-body);
-          font-size: 15px; font-weight: 500;
-          cursor: pointer; margin-top: 4px;
-          transition: opacity 0.15s, transform 0.15s;
-          display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        .auth-submit:hover { opacity: 0.88; transform: translateY(-1px); }
-        .auth-submit:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-
-        /* ── Global error banner ── */
-        .auth-error-banner {
-          background: #1a0c0c;
-          border: 1px solid var(--danger);
-          border-radius: 10px;
-          padding: 12px 16px;
-          font-size: 13px;
-          color: var(--danger);
-          display: flex; align-items: center; gap: 8px;
-        }
-
-        /* ── Divider ── */
-        .auth-divider {
-          display: flex; align-items: center; gap: 12px;
-          margin: 4px 0;
-        }
-        .auth-divider-line { flex: 1; height: 1px; background: var(--border); }
-        .auth-divider-text {
-          font-size: 11px; color: var(--muted);
-          font-family: var(--font-mono);
-        }
-
-        /* ── Footer link ── */
-        .auth-footer {
-          text-align: center;
-          margin-top: 20px;
-          font-size: 13px;
-          color: var(--text2);
-        }
-        .auth-footer a {
-          color: var(--accent);
-          text-decoration: none;
-          font-weight: 500;
-        }
-        .auth-footer a:hover { text-decoration: underline; }
-
-        /* ── Password strength ── */
-        .pw-strength { display: flex; gap: 4px; margin-top: 6px; }
-        .pw-bar {
-          flex: 1; height: 3px; border-radius: 2px;
-          background: var(--border);
-          transition: background 0.2s;
-        }
-        .pw-bar.active-weak   { background: var(--danger); }
-        .pw-bar.active-medium { background: var(--accent); }
-        .pw-bar.active-strong { background: var(--success); }
-        .pw-label {
-          font-size: 11px;
-          font-family: var(--font-mono);
-          margin-top: 4px;
-        }
-        .pw-label.weak   { color: var(--danger); }
-        .pw-label.medium { color: var(--accent); }
-        .pw-label.strong { color: var(--success); }
-
-        /* Spinner */
-        .spin { animation: spin 0.8s linear infinite; display: inline-block; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
-
-      <div className="auth-shell">
-        <div className="auth-card">
-          <div className="auth-logo">
-            <div className="auth-logo-mark">SL</div>
-            <span className="auth-logo-text">StudyLens</span>
-          </div>
-          <h1 className="auth-heading">{title}</h1>
-          <p className="auth-sub">{subtitle}</p>
-          {children}
+          {/* Form Content */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.1 }}
+          >
+            {children}
+          </motion.div>
         </div>
       </div>
-    </>
+
+      {/* Right Column (Branding/Marketing) — uses the abstract background image */}
+      <div className="hidden md:flex w-1/2 relative border-l border-[#1A2830] overflow-hidden items-center justify-center p-12">
+        {/* Background Image */}
+        <Image
+          src="/auth-bg.png"
+          alt=""
+          fill
+          className="object-cover"
+          priority
+        />
+        {/* Subtle Dark Overlay */}
+        <div className="absolute inset-0 bg-[#05090B]/70 pointer-events-none" />
+
+        <div className="relative z-10 w-full max-w-lg flex flex-col items-center">
+          {rightContent ? (
+            rightContent
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="flex flex-col items-center text-center"
+            >
+              {variant === "register" ? (
+                <>
+                  <h2 className="text-4xl font-bold text-white mb-8 drop-shadow-lg">
+                    Start learning smarter today.
+                  </h2>
+                  <ul className="space-y-6 text-left inline-block">
+                    {[
+                      "Turn videos into notes",
+                      "AI-powered learning tools",
+                      "Study anytime, anywhere",
+                    ].map((item, idx) => (
+                      <li key={idx} className="flex items-center gap-4 text-[#F5F7F7] text-lg font-medium drop-shadow">
+                        <div className="flex-shrink-0 h-8 w-8 rounded-full bg-[#00D9C0]/20 backdrop-blur-sm flex items-center justify-center text-[#00D9C0] border border-[#00D9C0]/30">
+                          <CheckCircle2 className="h-5 w-5" />
+                        </div>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : (
+                <div className="text-center flex flex-col items-center">
+                  <Image
+                    src="/studylens-brand-logo.png"
+                    alt="StudyLens Branding"
+                    width={280}
+                    height={70}
+                    className="mb-8 h-16 w-auto drop-shadow-lg"
+                  />
+                  <h2 className="text-3xl font-bold text-white mb-4 drop-shadow-lg">
+                    Turn your lectures into knowledge you <span className="text-[#00D9C0]">can use</span>.
+                  </h2>
+                  <p className="text-[#D0D5D6] text-lg drop-shadow max-w-md">
+                    AI-powered learning from your videos. Study smarter, learn faster, retain longer.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

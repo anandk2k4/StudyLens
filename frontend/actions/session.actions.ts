@@ -66,6 +66,7 @@ export async function getSessionAction(sessionId: string) {
   const userId  = await requireUser();
   const session = await prisma.session.findFirst({
     where: { id: sessionId, userId },
+    include: { knowledgeBase: true },
   });
   if (!session) throw new Error("Session not found");
   return session;

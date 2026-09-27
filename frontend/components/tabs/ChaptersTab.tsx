@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import { BookMarked, Play, Clock } from "lucide-react";
 import { Chapter } from "@/lib/store";
 
 function fmt(seconds: number): string {
@@ -16,14 +18,13 @@ export function ChaptersTab({
   currentTime = 0,
   onSeek,
 }: {
-  chapters:    any;
+  chapters: any;
   currentTime?: number;
-  onSeek:      (t: number) => void;
+  onSeek: (t: number) => void;
 }) {
   const chapters = (raw as Chapter[]) ?? [];
   const [activeIdx, setActiveIdx] = useState(0);
 
-  // Track active chapter based on video currentTime
   useEffect(() => {
     if (!chapters.length) return;
     const idx = chapters.findLastIndex((c) => currentTime >= c.start);
@@ -32,144 +33,106 @@ export function ChaptersTab({
 
   if (!chapters.length) {
     return (
-      <div className="tab-content">
-        <div className="ch-empty">
-          <div className="ch-empty-icon">📖</div>
-          <p className="ch-empty-title">No chapters available</p>
-          <p className="ch-empty-sub">
-            Chapters are generated automatically when a video is processed.
-            Short videos (under 5 min) may not have chapters.
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-[#4A5B62]">
+        <BookMarked className="mb-2 h-8 w-8 text-[#4A5B62]/40" />
+        <p className="font-semibold text-[#8B9A9D]">No chapters detected</p>
+        <p className="text-xs text-[#4A5B62]">
+          Chapters are extracted automatically from the Knowledge Base for structured lectures.
+        </p>
       </div>
     );
   }
 
   return (
-    <>
-      <ChapterStyles />
-      <div className="tab-content">
-        <div className="ch-header">
-          <span className="ch-count">{chapters.length} chapters</span>
+    <div className="flex max-w-4xl flex-col gap-6">
+      {/* Header bar */}
+      <div className="flex items-center justify-between border-b border-[#1A2830] pb-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#00D9C0]/10 text-[#00D9C0]">
+            <BookMarked className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-white">Lecture Chapters</h2>
+            <p className="text-xs text-[#8B9A9D]">
+              Semantic topic boundaries with instant timeline navigation
+            </p>
+          </div>
         </div>
 
-        <div className="ch-list">
-          {chapters.map((chapter, idx) => {
-            const isActive = idx === activeIdx;
-            const duration = chapter.end - chapter.start;
-
-            return (
-              <div
-                key={idx}
-                className={`ch-item ${isActive ? "active" : ""}`}
-                onClick={() => {
-                  setActiveIdx(idx);
-                  onSeek(chapter.start);
-                }}
-              >
-                {/* Left — number + timestamp */}
-                <div className="ch-left">
-                  <span className="ch-num">{idx + 1}</span>
-                  <span className="ch-time">{fmt(chapter.start)}</span>
-                </div>
-
-                {/* Center — title + summary */}
-                <div className="ch-body">
-                  <p className="ch-title">{chapter.title}</p>
-                  <p className="ch-summary">{chapter.summary}</p>
-                </div>
-
-                {/* Right — duration */}
-                <div className="ch-right">
-                  <span className="ch-duration">{fmt(duration)}</span>
-                  {isActive && <span className="ch-playing">▶</span>}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <span className="font-mono text-xs font-semibold text-[#4A5B62]">
+          {chapters.length} chapters
+        </span>
       </div>
-    </>
-  );
-}
 
-function ChapterStyles() {
-  return (
-    <style>{`
-      .ch-header {
-        display: flex; align-items: center; justify-content: space-between;
-        margin-bottom: 16px;
-      }
-      .ch-count {
-        font-family: var(--font-mono); font-size: 11px;
-        color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
-      }
+      {/* Chapters list */}
+      <div className="space-y-3">
+        {chapters.map((chapter, idx) => {
+          const isActive = idx === activeIdx;
+          const duration = chapter.end - chapter.start;
 
-      .ch-list { display: flex; flex-direction: column; gap: 4px; }
+          return (
+            <motion.div
+              key={idx}
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: idx * 0.04 }}
+              onClick={() => {
+                setActiveIdx(idx);
+                onSeek(chapter.start);
+              }}
+              className={`group flex cursor-pointer items-start gap-4 rounded-xl border p-4 transition-all ${
+                isActive
+                  ? "border-[#00D9C0] bg-[#111A1F] shadow-md shadow-[#00D9C0]/10"
+                  : "border-[#1A2830] bg-[#0D1519] hover:border-[#00D9C0]/40 hover:bg-[#111A1F]"
+              }`}
+            >
+              {/* Number and Timestamp */}
+              <div className="flex flex-col items-center gap-1.5 shrink-0 pt-0.5">
+                <span
+                  className={`flex h-6 w-6 items-center justify-center rounded-lg font-mono text-xs font-bold transition-colors ${
+                    isActive
+                      ? "bg-[#00D9C0] text-white"
+                      : "bg-[#111A1F] text-[#8B9A9D] group-hover:text-white"
+                  }`}
+                >
+                  {idx + 1}
+                </span>
+                <span className="font-mono text-[11px] font-semibold text-[#00D9C0]">
+                  {fmt(chapter.start)}
+                </span>
+              </div>
 
-      .ch-item {
-        display: flex; align-items: flex-start; gap: 14px;
-        padding: 14px 16px; border-radius: 12px;
-        background: var(--surface); border: 1px solid transparent;
-        cursor: pointer; transition: background 0.12s, border-color 0.12s;
-      }
-      .ch-item:hover { background: var(--surface2); border-color: var(--border); }
-      .ch-item.active {
-        background: var(--surface2);
-        border-color: var(--accent);
-      }
+              {/* Title & Summary */}
+              <div className="flex-1 min-w-0">
+                <h3
+                  className={`text-sm font-semibold transition-colors ${
+                    isActive ? "text-[#33E3D0]" : "text-white group-hover:text-[#33E3D0]"
+                  }`}
+                >
+                  {chapter.title}
+                </h3>
+                <p className="mt-1 text-xs leading-relaxed text-[#8B9A9D]">
+                  {chapter.summary}
+                </p>
+              </div>
 
-      .ch-left {
-        display: flex; flex-direction: column;
-        align-items: center; gap: 4px; flex-shrink: 0;
-        padding-top: 2px;
-      }
-      .ch-num {
-        width: 22px; height: 22px; border-radius: 6px;
-        background: var(--border); color: var(--text2);
-        font-family: var(--font-mono); font-size: 10px; font-weight: 500;
-        display: flex; align-items: center; justify-content: center;
-      }
-      .ch-item.active .ch-num {
-        background: var(--accent); color: #0a0a0c;
-      }
-      .ch-time {
-        font-family: var(--font-mono); font-size: 10px;
-        color: var(--accent2);
-      }
-      .ch-item.active .ch-time { color: var(--accent); }
-
-      .ch-body { flex: 1; min-width: 0; }
-      .ch-title {
-        font-size: 14px; font-weight: 500; color: var(--text);
-        margin-bottom: 4px; line-height: 1.3;
-      }
-      .ch-item.active .ch-title { color: var(--accent); }
-      .ch-summary {
-        font-size: 12px; color: var(--muted); line-height: 1.5;
-      }
-
-      .ch-right {
-        display: flex; flex-direction: column;
-        align-items: flex-end; gap: 4px; flex-shrink: 0;
-      }
-      .ch-duration {
-        font-family: var(--font-mono); font-size: 10px; color: var(--muted);
-      }
-      .ch-playing {
-        font-size: 8px; color: var(--accent);
-        animation: pulse 1.5s ease-in-out infinite;
-      }
-      @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
-
-      .ch-empty {
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        min-height: 260px; gap: 10px; text-align: center;
-      }
-      .ch-empty-icon { font-size: 38px; opacity: 0.4; }
-      .ch-empty-title { font-size: 15px; font-weight: 500; color: var(--text2); }
-      .ch-empty-sub { font-size: 13px; color: var(--muted); max-width: 300px; line-height: 1.6; }
-    `}</style>
+              {/* Duration and Play Indicator */}
+              <div className="flex flex-col items-end gap-2 shrink-0 text-xs font-mono text-[#4A5B62]">
+                <div className="flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  <span>{fmt(duration)}</span>
+                </div>
+                {isActive && (
+                  <span className="flex items-center gap-1 text-[11px] font-semibold text-[#10b981]">
+                    <Play className="h-3 w-3 fill-[#10b981]" />
+                    <span>Now Playing</span>
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

@@ -1,32 +1,31 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
+import { Layers, RotateCcw, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react";
 import { Flashcard } from "@/lib/store";
 
 export function FlashcardsTab({ flashcards: raw }: { flashcards: any }) {
   const cards = (raw as Flashcard[]) ?? [];
-
-  const [index,   setIndex]   = useState(0);
+  const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  const [done,    setDone]    = useState(false);
+  const [done, setDone] = useState(false);
 
   if (!cards.length) {
     return (
-      <div className="tab-content">
-        <div className="fc-empty">
-          <div className="fc-empty-icon">🃏</div>
-          <p className="fc-empty-title">No flashcards available</p>
-          <p className="fc-empty-sub">
-            Flashcards are generated automatically when a video is processed.
-          </p>
-        </div>
+      <div className="flex flex-col items-center justify-center py-16 text-center text-sm text-[#4A5B62]">
+        <Layers className="mb-2 h-8 w-8 text-[#4A5B62]/40" />
+        <p className="font-semibold text-[#8B9A9D]">No flashcards available</p>
+        <p className="text-xs text-[#4A5B62]">
+          Flashcards are generated automatically when a video is processed.
+        </p>
       </div>
     );
   }
 
-  const card    = cards[index];
-  const total   = cards.length;
-  const percent = Math.round(((index + (flipped ? 1 : 0)) / total) * 100);
+  const card = cards[index];
+  const total = cards.length;
+  const progressPercent = Math.round(((index + 1) / total) * 100);
 
   function handleFlip() {
     setFlipped((v) => !v);
@@ -54,333 +53,138 @@ export function FlashcardsTab({ flashcards: raw }: { flashcards: any }) {
     setDone(false);
   }
 
-  // ── Completed state ───────────────────────────────────────────────────────
   if (done) {
     return (
-      <>
-        <FlashcardStyles />
-        <div className="tab-content">
-          <div className="fc-done">
-            <div className="fc-done-icon">✦</div>
-            <h2 className="fc-done-title">Session complete</h2>
-            <p className="fc-done-sub">
-              You reviewed all {total} flashcards.
-            </p>
-            <button className="fc-restart-btn" onClick={handleRestart}>
-              ↺ Review again
-            </button>
-          </div>
-        </div>
-      </>
+      <div className="flex max-w-xl mx-auto flex-col items-center justify-center py-16 text-center">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#10b981]/15 text-[#10b981]"
+        >
+          <CheckCircle2 className="h-8 w-8" />
+        </motion.div>
+        <h2 className="text-2xl font-bold text-white">Review Complete!</h2>
+        <p className="mt-2 text-sm text-[#8B9A9D]">
+          You have reviewed all {total} flashcards for this lecture.
+        </p>
+        <button
+          onClick={handleRestart}
+          className="mt-6 flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#00D9C0] to-[#00B09D] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[#00D9C0]/20 hover:opacity-95"
+        >
+          <RotateCcw className="h-4 w-4" />
+          <span>Review Again</span>
+        </button>
+      </div>
     );
   }
 
   return (
-    <>
-      <FlashcardStyles />
-      <div className="tab-content">
-        <div className="fc-wrap">
+    <div className="mx-auto flex max-w-xl flex-col gap-6">
+      {/* Header & Progress */}
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center justify-between text-xs font-mono text-[#8B9A9D]">
+          <span className="flex items-center gap-1.5 font-bold text-[#00D9C0]">
+            <Layers className="h-4 w-4" />
+            <span>Card {index + 1} of {total}</span>
+          </span>
+          <span className="text-[#4A5B62]">
+            {flipped ? "Showing Answer" : "Click card to flip"}
+          </span>
+        </div>
 
-          {/* Progress */}
-          <div className="fc-progress-row">
-            <span className="fc-counter">
-              {index + 1} <span className="fc-counter-sep">/</span> {total}
-            </span>
-            <div className="fc-progress-bar">
-              <div
-                className="fc-progress-fill"
-                style={{ width: `${((index + 1) / total) * 100}%` }}
-              />
-            </div>
-            <span className="fc-side-label">
-              {flipped ? "Answer" : "Question"}
-            </span>
-          </div>
-
-          {/* Card */}
+        {/* Progress bar */}
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#111A1F]">
           <div
-            className={`fc-card-scene`}
-            onClick={handleFlip}
-            title="Click to flip"
-          >
-            <div className={`fc-card ${flipped ? "flipped" : ""}`}>
-              {/* Front */}
-              <div className="fc-face fc-front">
-                <div className="fc-face-label">Question</div>
-                <p className="fc-face-text">{card.front}</p>
-                <div className="fc-flip-hint">Click to reveal answer ↓</div>
-              </div>
-              {/* Back */}
-              <div className="fc-face fc-back">
-                <div className="fc-face-label">Answer</div>
-                <p className="fc-face-text">{card.back}</p>
-                <div className="fc-flip-hint">Click to see question ↑</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Controls */}
-          <div className="fc-controls">
-            <button
-              className="fc-nav-btn"
-              onClick={handlePrev}
-              disabled={index === 0}
-            >
-              ← Prev
-            </button>
-
-            <button className="fc-flip-btn" onClick={handleFlip}>
-              {flipped ? "↑ Show question" : "↓ Reveal answer"}
-            </button>
-
-            <button className="fc-nav-btn fc-next" onClick={handleNext}>
-              {index === total - 1 ? "Finish ✓" : "Next →"}
-            </button>
-          </div>
-
-          {/* All cards overview */}
-          <div className="fc-dots">
-            {cards.map((_, i) => (
-              <button
-                key={i}
-                className={`fc-dot ${
-                  i === index ? "current" : i < index ? "seen" : ""
-                }`}
-                onClick={() => { setIndex(i); setFlipped(false); }}
-                title={`Card ${i + 1}`}
-              />
-            ))}
-          </div>
-
+            className="h-full bg-gradient-to-r from-[#00D9C0] to-[#00B09D] transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
         </div>
       </div>
-    </>
-  );
-}
 
-// ── Styles ────────────────────────────────────────────────────────────────────
-function FlashcardStyles() {
-  return (
-    <style>{`
-      .fc-wrap {
-        max-width: 620px;
-        margin: 0 auto;
-        display: flex;
-        flex-direction: column;
-        gap: 20px;
-      }
+      {/* 3D Flip Card */}
+      <div
+        className="relative h-64 w-full cursor-pointer select-none [perspective:1000px]"
+        onClick={handleFlip}
+      >
+        <motion.div
+          animate={{ rotateY: flipped ? 180 : 0 }}
+          transition={{ duration: 0.45, ease: "easeInOut" }}
+          className="relative h-full w-full [transform-style:preserve-3d]"
+        >
+          {/* Front Face */}
+          <div className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-[#1A2830] bg-[#0D1519] p-8 shadow-xl [backface-visibility:hidden]">
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#33E3D0]">
+              Question
+            </span>
+            <p className="my-auto text-lg font-medium leading-relaxed text-white">
+              {card.front}
+            </p>
+            <span className="text-right text-[11px] font-mono text-[#4A5B62]">
+              Tap to see answer ↵
+            </span>
+          </div>
 
-      /* Progress row */
-      .fc-progress-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .fc-counter {
-        font-family: var(--font-mono);
-        font-size: 13px;
-        color: var(--accent);
-        flex-shrink: 0;
-      }
-      .fc-counter-sep { color: var(--muted); }
-      .fc-progress-bar {
-        flex: 1;
-        height: 4px;
-        background: var(--border);
-        border-radius: 2px;
-        overflow: hidden;
-      }
-      .fc-progress-fill {
-        height: 100%;
-        background: var(--accent);
-        border-radius: 2px;
-        transition: width 0.3s ease;
-      }
-      .fc-side-label {
-        font-family: var(--font-mono);
-        font-size: 10px;
-        color: var(--muted);
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        flex-shrink: 0;
-        width: 60px;
-        text-align: right;
-      }
+          {/* Back Face */}
+          <div className="absolute inset-0 flex flex-col justify-between rounded-2xl border border-[#00D9C0]/40 bg-gradient-to-b from-[#111A1F] to-[#0D1519] p-8 shadow-xl [backface-visibility:hidden] [transform:rotateY(180deg)]">
+            <span className="font-mono text-xs font-bold uppercase tracking-wider text-[#00D9C0]">
+              Answer
+            </span>
+            <p className="my-auto text-lg font-medium leading-relaxed text-[#F5F7F7]">
+              {card.back}
+            </p>
+            <span className="text-right text-[11px] font-mono text-[#4A5B62]">
+              Tap to see question ↵
+            </span>
+          </div>
+        </motion.div>
+      </div>
 
-      /* Card 3D scene */
-      .fc-card-scene {
-        perspective: 1000px;
-        cursor: pointer;
-        height: 240px;
-        user-select: none;
-      }
+      {/* Navigation Controls */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          onClick={handlePrev}
+          disabled={index === 0}
+          className="flex items-center gap-1.5 rounded-xl border border-[#1A2830] bg-[#0D1519] px-4 py-2.5 text-sm font-medium text-[#8B9A9D] transition-colors hover:border-[#00D9C0] hover:text-white disabled:opacity-30"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span>Previous</span>
+        </button>
 
-      .fc-card {
-        width: 100%;
-        height: 100%;
-        position: relative;
-        transform-style: preserve-3d;
-        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      .fc-card.flipped { transform: rotateY(180deg); }
+        <button
+          onClick={handleFlip}
+          className="rounded-xl border border-[#00D9C0]/40 bg-[#00D9C0]/10 px-5 py-2.5 text-sm font-semibold text-[#33E3D0] transition-colors hover:bg-[#00D9C0] hover:text-white"
+        >
+          {flipped ? "Show Question" : "Reveal Answer"}
+        </button>
 
-      .fc-face {
-        position: absolute;
-        inset: 0;
-        backface-visibility: hidden;
-        -webkit-backface-visibility: hidden;
-        border-radius: 16px;
-        padding: 28px 32px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        text-align: center;
-        border: 1px solid var(--border);
-      }
+        <button
+          onClick={handleNext}
+          className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-[#00D9C0] to-[#00B09D] px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-[#00D9C0]/20 hover:opacity-95"
+        >
+          <span>{index === total - 1 ? "Finish" : "Next"}</span>
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
 
-      .fc-front {
-        background: var(--surface);
-        border-color: var(--border2);
-      }
-      .fc-back {
-        background: linear-gradient(135deg, #141008 0%, #1a1610 100%);
-        border-color: rgba(200, 169, 110, 0.3);
-        transform: rotateY(180deg);
-      }
-
-      .fc-face-label {
-        font-family: var(--font-mono);
-        font-size: 9px;
-        letter-spacing: 0.16em;
-        text-transform: uppercase;
-        color: var(--muted);
-        margin-bottom: 14px;
-        align-self: flex-start;
-      }
-      .fc-back .fc-face-label { color: var(--accent); }
-
-      .fc-face-text {
-        font-size: 17px;
-        line-height: 1.55;
-        color: var(--text);
-        font-weight: 400;
-        flex: 1;
-        display: flex;
-        align-items: center;
-      }
-      .fc-back .fc-face-text { color: #e8dcc8; }
-
-      .fc-flip-hint {
-        font-size: 11px;
-        color: var(--muted);
-        margin-top: 14px;
-        font-family: var(--font-mono);
-        align-self: flex-end;
-      }
-
-      /* Controls */
-      .fc-controls {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-      }
-      .fc-nav-btn {
-        padding: 10px 20px;
-        background: var(--surface2);
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        color: var(--text2);
-        font-size: 13px;
-        font-family: var(--font-body);
-        cursor: pointer;
-        transition: border-color 0.15s, color 0.15s;
-        flex-shrink: 0;
-      }
-      .fc-nav-btn:hover:not(:disabled) {
-        border-color: var(--accent);
-        color: var(--accent);
-      }
-      .fc-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-      .fc-nav-btn.fc-next:hover:not(:disabled) {
-        border-color: var(--accent);
-        color: var(--accent);
-      }
-
-      .fc-flip-btn {
-        flex: 1;
-        padding: 11px;
-        background: var(--accent);
-        border: none;
-        border-radius: 10px;
-        color: #0a0a0c;
-        font-size: 14px;
-        font-weight: 500;
-        font-family: var(--font-body);
-        cursor: pointer;
-        transition: opacity 0.15s;
-      }
-      .fc-flip-btn:hover { opacity: 0.85; }
-
-      /* Dots */
-      .fc-dots {
-        display: flex;
-        gap: 6px;
-        justify-content: center;
-        flex-wrap: wrap;
-      }
-      .fc-dot {
-        width: 7px; height: 7px;
-        border-radius: 50%;
-        background: var(--border2);
-        border: none; cursor: pointer;
-        transition: background 0.15s, transform 0.15s;
-        padding: 0;
-      }
-      .fc-dot.seen    { background: var(--border2); opacity: 0.6; }
-      .fc-dot.current {
-        background: var(--accent);
-        transform: scale(1.3);
-      }
-      .fc-dot:hover { background: var(--text2); }
-
-      /* Done state */
-      .fc-done {
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        min-height: 320px; gap: 12px; text-align: center;
-      }
-      .fc-done-icon {
-        font-size: 44px; color: var(--accent);
-        animation: pulse 2s ease-in-out infinite;
-      }
-      .fc-done-title {
-        font-family: var(--font-display);
-        font-size: 26px; letter-spacing: -0.01em;
-      }
-      .fc-done-sub { color: var(--text2); font-size: 14px; }
-      .fc-restart-btn {
-        margin-top: 8px;
-        padding: 12px 28px;
-        background: var(--accent); color: #0a0a0c;
-        border: none; border-radius: 10px;
-        font-size: 14px; font-weight: 500;
-        font-family: var(--font-body);
-        cursor: pointer; transition: opacity 0.15s;
-      }
-      .fc-restart-btn:hover { opacity: 0.85; }
-
-      /* Empty state */
-      .fc-empty {
-        display: flex; flex-direction: column;
-        align-items: center; justify-content: center;
-        min-height: 280px; gap: 10px; text-align: center;
-      }
-      .fc-empty-icon { font-size: 40px; opacity: 0.4; }
-      .fc-empty-title {
-        font-size: 16px; font-weight: 500; color: var(--text2);
-      }
-      .fc-empty-sub { font-size: 13px; color: var(--muted); max-width: 280px; }
-    `}</style>
+      {/* Dots Indicator */}
+      <div className="flex flex-wrap justify-center gap-1.5 pt-2">
+        {cards.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => {
+              setIndex(i);
+              setFlipped(false);
+            }}
+            className={`h-2 rounded-full transition-all ${
+              i === index
+                ? "w-6 bg-[#00D9C0]"
+                : i < index
+                ? "w-2 bg-[#00D9C0]/40"
+                : "w-2 bg-[#1A2830]"
+            }`}
+          />
+        ))}
+      </div>
+    </div>
   );
 }

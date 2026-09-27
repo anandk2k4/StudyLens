@@ -1,0 +1,45 @@
+<svg width="240" height="60" viewBox="0 0 240 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="sl-bg" x1="6" y1="6" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#7c5cfc" />
+      <stop offset="50%" stopColor="#5b3ac7" />
+      <stop offset="100%" stopColor="#00b4d8" />
+    </linearGradient>
+    <linearGradient id="sl-ring" x1="12" y1="12" x2="48" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ffffff" stopOpacity="0.8" />
+      <stop offset="100%" stopColor="#38d4f4" stopOpacity="0.3" />
+    </linearGradient>
+    <linearGradient id="sl-spark" x1="20" y1="20" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stopColor="#ffffff" />
+      <stop offset="100%" stopColor="#e0f7fa" />
+    </linearGradient>
+    <linearGradient id="sl-text-grad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stopColor="#9b82fc" />
+      <stop offset="100%" stopColor="#38d4f4" />
+    </linearGradient>
+    <filter id="sl-glow-filter" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base -->
+  <rect x="6" y="6" width="48" height="48" rx="14" fill="url(#sl-bg)" stroke="rgba(255, 255, 255, 0.2)" stroke-width="1.5"/>
+
+  <!-- Optical Aperture Rings -->
+  <circle cx="30" cy="30" r="16" stroke="url(#sl-ring)" stroke-width="1.6" stroke-dasharray="4 2.5" opacity="0.9"/>
+  <circle cx="30" cy="30" r="11" stroke="rgba(255, 255, 255, 0.4)" stroke-width="1.2"/>
+
+  <!-- Crosshair markers -->
+  <path d="M 30 10 L 30 13" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  <path d="M 30 47 L 30 50" stroke="#38d4f4" stroke-width="2" stroke-linecap="round" />
+  <path d="M 10 30 L 13 30" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  <path d="M 47 30 L 50 30" stroke="#38d4f4" stroke-width="2" stroke-linecap="round" />
+
+  <!-- Central Knowledge Spark -->
+  <path d="M 30 20 C 30 25.5, 25.5 30, 20 30 C 25.5 30, 30 34.5, 30 40 C 30 34.5, 34.5 30, 40 30 C 34.5 30, 30 25.5, 30 20 Z" fill="url(#sl-spark)" filter="url(#sl-glow-filter)"/>
+  <circle cx="30" cy="30" r="2.2" fill="#5b3ac7" />
+
+  <!-- Typography -->
+  <text x="68" y="38" font-family="-apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif" font-size="24" font-weight="700" fill="#ffffff">Study<tspan fill="url(#sl-text-grad)">Lens</tspan></text>
+</svg>

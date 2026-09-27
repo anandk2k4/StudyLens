@@ -17,7 +17,10 @@ export async function GET(
   }
 
   const { id } = await params;
-  const session = await prisma.session.findUnique({ where: { id } });
+  const session = await prisma.session.findUnique({
+    where: { id },
+    include: { knowledgeBase: true },
+  });
   if (!session) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   return NextResponse.json(session);

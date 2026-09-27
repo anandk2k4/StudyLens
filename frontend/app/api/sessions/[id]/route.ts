@@ -10,7 +10,9 @@ const INTERNAL_KEY = process.env.INTERNAL_API_KEY ?? "";
 
 const VALID_STATUSES = [
   "PROCESSING", "DOWNLOADING", "EXTRACTING_AUDIO", "TRANSCRIBING",
-  "GENERATING_EMBEDDINGS", "GENERATING_SUMMARY", "GENERATING_NOTES",
+  "BUILDING_KNOWLEDGE_BASE", "KNOWLEDGE_BASE_READY",
+  "GENERATING_EMBEDDINGS", "GENERATING_FEATURES",
+  "GENERATING_SUMMARY", "GENERATING_NOTES",
   "GENERATING_QUIZ", "GENERATING_FLASHCARDS", "READY", "ERROR",
 ] as const;
 
@@ -49,7 +51,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { _userId, errorMessage, ...updateData } = body;
+    const { _userId, errorMessage, knowledgeBase: kbData, ...updateData } = body;
 
     const internalKey = req.headers.get("x-internal-key");
     const isInternal  = INTERNAL_KEY && internalKey === INTERNAL_KEY;
@@ -66,10 +68,44 @@ export async function PATCH(
     if (!session) return NextResponse.json({ error: "Session not found." }, { status: 404 });
     if (session.userId !== userId) return NextResponse.json({ error: "Access denied." }, { status: 403 });
 
+    // Handle Knowledge Base upsert if provided
+    if (kbData && typeof kbData === "object") {
+      try {
+        await prisma.knowledgeBase.upsert({
+          where: { sessionId },
+          create: {
+            sessionId,
+            cleanedTranscript: kbData.cleanedTranscript ?? null,
+            status: kbData.status ?? "READY",
+            topics: kbData.topics ?? null,
+            concepts: kbData.concepts ?? null,
+            keyFacts: kbData.keyFacts ?? kbData.key_facts ?? null,
+            relationships: kbData.relationships ?? null,
+            learningObjectives: kbData.learningObjectives ?? kbData.learning_objectives ?? null,
+            chapters: kbData.chapters ?? null,
+          },
+          update: {
+            ...(kbData.cleanedTranscript !== undefined && { cleanedTranscript: kbData.cleanedTranscript }),
+            ...(kbData.status !== undefined && { status: kbData.status }),
+            ...(kbData.topics !== undefined && { topics: kbData.topics }),
+            ...(kbData.concepts !== undefined && { concepts: kbData.concepts }),
+            ...(kbData.keyFacts !== undefined && { keyFacts: kbData.keyFacts }),
+            ...(kbData.key_facts !== undefined && { keyFacts: kbData.key_facts }),
+            ...(kbData.relationships !== undefined && { relationships: kbData.relationships }),
+            ...(kbData.learningObjectives !== undefined && { learningObjectives: kbData.learningObjectives }),
+            ...(kbData.learning_objectives !== undefined && { learningObjectives: kbData.learning_objectives }),
+            ...(kbData.chapters !== undefined && { chapters: kbData.chapters }),
+          },
+        });
+      } catch (kbErr) {
+        console.warn("[PATCH /api/sessions/:id] Failed to upsert KnowledgeBase:", kbErr);
+      }
+    }
+
     const updated = await prisma.session.update({
       where: { id: sessionId },
       data: {
-        ...(updateData.status     && { status:       updateData.status as SessionStatus }),
+        ...(updateData.status     && { status:       updateData.status as any }),
         ...(errorMessage          && { errorMessage }),
         ...(updateData.videoUrl   !== undefined && { videoUrl:   updateData.videoUrl }),
         ...(updateData.videoId    !== undefined && { videoId:    updateData.videoId }),
@@ -81,8 +117,9 @@ export async function PATCH(
         ...(updateData.quiz       !== undefined && { quiz:       updateData.quiz }),
         ...(updateData.segments   !== undefined && { segments:   updateData.segments }),
         ...(updateData.flashcards !== undefined && { flashcards: updateData.flashcards }),
-        ...(updateData.chapters   !== undefined && { chapters:   updateData.chapters }),  // ← NEW
+        ...(updateData.chapters   !== undefined && { chapters:   updateData.chapters }),
       },
+      include: { knowledgeBase: true },
     });
 
     return NextResponse.json({ session: updated }, { status: 200 });

@@ -28,13 +28,27 @@ export interface Chapter {
 }
 
 export type SessionStatus =
-  | "PROCESSING" | "DOWNLOADING" | "EXTRACTING_AUDIO" | "TRANSCRIBING"
-  | "GENERATING_EMBEDDINGS" | "GENERATING_SUMMARY" | "GENERATING_NOTES"
-  | "GENERATING_QUIZ" | "GENERATING_FLASHCARDS" | "READY" | "ERROR";
+  | "PROCESSING"
+  | "DOWNLOADING"
+  | "EXTRACTING_AUDIO"
+  | "TRANSCRIBING"
+  | "BUILDING_KNOWLEDGE_BASE"
+  | "KNOWLEDGE_BASE_READY"
+  | "GENERATING_EMBEDDINGS"
+  | "GENERATING_FEATURES"
+  | "GENERATING_SUMMARY"
+  | "GENERATING_NOTES"
+  | "GENERATING_QUIZ"
+  | "GENERATING_FLASHCARDS"
+  | "READY"
+  | "ERROR";
 
 export type ActiveTab =
-  | "summary" | "notes" | "quiz" | "transcript"
-  | "chat" | "flashcards" | "chapters" | "tutor" | "revision";     // ← NEW
+  | "overview" | "summary" | "notes" | "quiz" | "transcript"
+  | "chat" | "flashcards" | "chapters" | "tutor" | "revision";
+
+export type ActiveView =
+  | "dashboard" | "library" | "tutor" | "revision" | "flashcards" | "ask-ai" | "workspace";
 
 export interface SessionMeta {
   id:            string;
@@ -59,6 +73,7 @@ export interface SessionFull extends SessionMeta {
   flashcards?: any;
   chapters?:   any; 
   revision?:   any;  // ← NEW — Prisma JsonValue → 
+  knowledgeBase?: any; // ← NEW: Knowledge Base structured data
 }
 
 export interface User {
@@ -81,6 +96,7 @@ interface StudyLensStore {
   activeSessionId:     string | null;
   activeSessionFull:   SessionFull | null;
   activeTab:           ActiveTab;
+  activeView:          ActiveView;
   sidebarCollapsed:    boolean;
   hydrated:            boolean;
 
@@ -91,13 +107,14 @@ interface StudyLensStore {
   removeSession:       (id: string) => void;
   setActiveSession:    (id: string | null, full?: SessionFull) => void;
   setActiveTab:        (t: ActiveTab) => void;
+  setActiveView:       (v: ActiveView) => void;
   setSidebarCollapsed: (v: boolean) => void;
   setHydrated:         (v: boolean) => void;
 }
 
 export const useStore = create<StudyLensStore>((set) => ({
   user: null, sessions: [], activeSessionId: null,
-  activeSessionFull: null, activeTab: "summary",
+  activeSessionFull: null, activeTab: "overview", activeView: "dashboard",
   sidebarCollapsed: false, hydrated: false,
 
   setUser:     (user)     => set({ user }),
@@ -118,12 +135,19 @@ export const useStore = create<StudyLensStore>((set) => ({
       sessions:          st.sessions.filter((s) => s.id !== id),
       activeSessionId:   st.activeSessionId === id ? null : st.activeSessionId,
       activeSessionFull: st.activeSessionId === id ? null : st.activeSessionFull,
+      activeView:        st.activeSessionId === id ? "dashboard" : st.activeView,
     })),
 
   setActiveSession: (id, full) =>
-    set({ activeSessionId: id, activeSessionFull: full ?? null, activeTab: "summary" }),
+    set({
+      activeSessionId: id,
+      activeSessionFull: full ?? null,
+      activeTab: "overview",
+      activeView: id ? "workspace" : "dashboard",
+    }),
 
   setActiveTab:        (t) => set({ activeTab: t }),
+  setActiveView:       (v) => set({ activeView: v }),
   setSidebarCollapsed: (v) => set({ sidebarCollapsed: v }),
   setHydrated:         (v) => set({ hydrated: v }),
 }));

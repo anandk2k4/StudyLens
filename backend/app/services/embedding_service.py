@@ -108,6 +108,68 @@ def store_segments(
         raise EmbeddingError(f"Failed to store embeddings: {exc}") from exc
 
 
+def store_chunks(
+    chunks:     List[Dict],
+    video_id:   str,
+    user_id:    str  = "",
+    session_id: str  = "",
+    title:      str  = "",
+    source:     str  = "UPLOAD",
+) -> None:
+    """
+    Embed and store semantic chunks in ChromaDB with knowledge metadata.
+    Each chunk represents a cohesive 150-350 word passage.
+    """
+    global _current_video_id
+
+    try:
+        collection = _get_collection()
+        _current_video_id = video_id
+
+        texts = [c["text"] for c in chunks]
+        logger.info(f"Embedding {len(texts)} semantic chunks | video={video_id} user={user_id}")
+
+        # Delete existing entries for this video_id
+        try:
+            existing = collection.get(where={"video_id": {"$eq": video_id}})
+            if existing["ids"]:
+                collection.delete(ids=existing["ids"])
+                logger.info(f"Deleted {len(existing['ids'])} old chunks for video {video_id}")
+        except Exception:
+            pass
+
+        embeddings = _embed_model.encode(
+            texts, batch_size=32, show_progress_bar=False
+        ).tolist()
+
+        ids = [f"{video_id}_chunk_{i}" for i in range(len(chunks))]
+
+        collection.add(
+            ids=ids,
+            embeddings=embeddings,
+            documents=texts,
+            metadatas=[
+                {
+                    "video_id":    video_id,
+                    "session_id":  session_id or video_id,
+                    "user_id":     user_id,
+                    "title":       title,
+                    "source":      source,
+                    "start":       c.get("start_time", 0.0),
+                    "end":         c.get("end_time", 0.0),
+                    "chunk_index": c.get("index", i),
+                    "is_chunk":    True,
+                }
+                for i, c in enumerate(chunks)
+            ],
+        )
+        logger.info(f"Stored {len(chunks)} semantic chunks in ChromaDB")
+
+    except Exception as exc:
+        logger.error(f"Chunk embedding storage failed: {exc}")
+        raise EmbeddingError(f"Failed to store chunk embeddings: {exc}") from exc
+
+
 # ── Search — single video ─────────────────────────────────────────────────────
 
 def search_segments(
